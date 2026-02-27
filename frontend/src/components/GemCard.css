@@ -1,0 +1,170 @@
+/* ════════════════════════════════════════════════════
+   GEM CARD (Reference Image Match)
+════════════════════════════════════════════════════ */
+
+.gem-card-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    outline: none;
+}
+
+.gem-card {
+    background: linear-gradient(160deg, #161b2e 0%, #0d111c 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.gem-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ── Top Badges Overlaid on Visual Area ── */
+.card-badges {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+}
+
+.badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 0.02em;
+}
+
+.badge-verified {
+    background-color: #10b981;
+    /* Precise glowing green from screenshot */
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.badge-timer {
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #cbd5e1;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ── 3D Visual Area ── */
+.card-visual {
+    height: 220px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Soft glowing radial background behind the gem */
+    background: radial-gradient(circle at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+}
+
+.gem-scene-wrapper {
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    /* Let parent handle clicks, keep 3D scene visual only in card */
+}
+
+/* ── Card Content ── */
+.card-content {
+    padding: 20px 24px 24px;
+    background: rgba(10, 13, 20, 0.6);
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.gem-name {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.01em;
+    font-family: 'Inter', sans-serif;
+}
+
+.gem-carat {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+/* Prices */
+.bid-info {
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.price-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.price-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #64748b;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.price-value {
+    font-size: 1.25rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+}
+
+.text-gold {
+    color: #f59e0b;
+}
+
+.text-white {
+    color: #ffffff;
+}
+
+/* Action Button */
+.view-bids-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.view-bids-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+}
