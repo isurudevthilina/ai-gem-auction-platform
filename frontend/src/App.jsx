@@ -1,13 +1,13 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
-import LandingPage from './pages/LandingPage';
-import Signup from './pages/Signup';
-import Login from './pages/Login';
-import SellerDashboard from './pages/SellerDashboard';
-import BuyerDashboard from './pages/BuyerDashboard';
-import Profile from './pages/Profile';
-import GemDetails from './pages/GemDetails';
-import AdminDashboard from './pages/AdminDashboard';
+import LandingPage from './shared/components/LandingPage';
+import Signup from './features/users/pages/Signup';
+import Login from './features/users/pages/Login';
+import SellerDashboard from './features/users/pages/SellerDashboard';
+import BuyerDashboard from './features/users/pages/BuyerDashboard';
+import Profile from './features/users/pages/Profile';
+import GemDetails from './features/gems/pages/GemDetails';
+import AdminDashboard from './features/users/pages/AdminDashboard';
 
 function App() {
     return (

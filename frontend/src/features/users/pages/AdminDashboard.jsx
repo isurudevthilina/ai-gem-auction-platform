@@ -4,7 +4,7 @@ import {
     Users, Shield, CheckCircle, XCircle, ChevronDown,
     Search, Filter, Activity, PauseCircle, PlayCircle, Clock
 } from 'lucide-react';
-import GemCard from '../components/GemCard';
+import GemCard from '../../../shared/components/GemCard';
 
 /* ─── colour tokens — mirrors landing page ─── */
 const C = {

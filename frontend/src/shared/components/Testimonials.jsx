@@ -1,4 +1,4 @@
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext';
 
 const testimonials = [
     { name: 'Sarah Chen', role: 'CTO at Orbit Labs', avatar: 'SC', color: '#6366f1', stars: 5, text: 'GemBid completely transformed how we handle operations. The automation features saved our team 20+ hours per week. Absolutely incredible.' },

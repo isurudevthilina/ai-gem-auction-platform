@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Shield, Heart, Share2, Clock } from 'lucide-react';
-import GemScene from '../components/GemScene';
+import GemScene from '../../../shared/components/GemScene';
 
 /* ─── colour tokens — mirrors landing page ─── */
 const C = {

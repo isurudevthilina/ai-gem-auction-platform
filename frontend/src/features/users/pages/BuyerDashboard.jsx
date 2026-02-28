@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Plus, Search, Clock, CheckCircle, ChevronDown, LogOut,
-    Home, List, Sparkles, Filter
+    Search, Clock, CheckCircle, ChevronDown, LogOut,
+    Home, Heart, Activity, Filter, Eye
 } from 'lucide-react';
-import GemCard from '../components/GemCard';
+import GemCard from '../../../shared/components/GemCard';
 
 /* ─── colour tokens — mirrors landing page ─── */
 const C = {
@@ -22,7 +22,6 @@ const C = {
     dim: '#475569',
 };
 
-const goldGlow = '0 0 20px rgba(245,158,11,0.28)';
 const glassCard = {
     background: 'rgba(13,17,28,0.85)',
     border: `1px solid ${C.border}`,
@@ -31,15 +30,16 @@ const glassCard = {
 };
 
 /* ════════════════════════════════════════════════════
-   TOP NAVBAR (replaces sidebar)
+   TOP NAVBAR
 ════════════════════════════════════════════════════ */
-const Navbar = ({ active, setActive, onListGem }) => {
+const Navbar = ({ active, setActive }) => {
     const navigate = useNavigate();
 
     const navLinks = [
         { id: 'home', label: 'Home', icon: Home },
-        { id: 'predict', label: 'Predict Price', icon: Sparkles },
-        { id: 'listings', label: 'My Listings', icon: List },
+        { id: 'auctions', label: 'Live Auctions', icon: Activity },
+        { id: 'mybids', label: 'My Bids', icon: Clock },
+        { id: 'watchlist', label: 'Watchlist', icon: Heart },
     ];
 
     return (
@@ -95,41 +95,22 @@ const Navbar = ({ active, setActive, onListGem }) => {
                 })}
             </nav>
 
-            {/* Right side: List Gem CTA + Profile */}
+            {/* Right side: Profile */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
-                <button onClick={onListGem} style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '8px 18px',
-                    background: 'linear-gradient(135deg,#f59e0b,#d97706)',
-                    border: 'none', borderRadius: 9,
-                    color: '#0a0d14', fontWeight: 800, fontSize: '0.82rem',
-                    cursor: 'pointer', boxShadow: goldGlow, transition: 'all 0.2s', letterSpacing: '0.01em',
-                }}
-                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 32px rgba(245,158,11,0.55)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.boxShadow = goldGlow; e.currentTarget.style.transform = 'translateY(0)'; }}
-                >
-                    <Plus size={15} strokeWidth={3} /> List Gem
-                </button>
-
-                {/* Divider */}
-                <div style={{ width: 1, height: 28, background: C.border }} />
-
                 {/* Profile */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => navigate('/profile')}>
                     <div style={{
                         width: 36, height: 36, borderRadius: '50%',
-                        background: 'linear-gradient(135deg,#f59e0b,#ec4899)',
+                        background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontWeight: 900, fontSize: '0.82rem', color: '#fff', flexShrink: 0,
-                    }}>AS</div>
+                    }}>JD</div>
                     <div style={{ lineHeight: 1.25 }}>
-                        <div style={{ color: C.text, fontWeight: 700, fontSize: '0.8rem' }}>Amara Silva</div>
-                        <div style={{ color: C.green, fontSize: '0.65rem', fontWeight: 600 }}>✓ Verified Seller</div>
+                        <div style={{ color: C.text, fontWeight: 700, fontSize: '0.8rem' }}>John Doe</div>
+                        <div style={{ color: C.indigo, fontSize: '0.65rem', fontWeight: 600 }}>🌟 Premium Buyer</div>
                     </div>
                     <ChevronDown size={14} style={{ color: C.dim }} />
                 </div>
-
-
             </div>
         </header>
     );
@@ -139,123 +120,21 @@ const Navbar = ({ active, setActive, onListGem }) => {
    GEM DATA
 ════════════════════════════════════════════════════ */
 const gems = [
-    { id: 1, name: 'Royal Blue Sapphire', carat: 2.5, bid: 12500, buyNow: 15000, status: 'Active', ends: '12h 30m', category: 'Sapphire', color: '#3b82f6', emoji: '💎' },
-    { id: 2, name: 'Pigeon Blood Ruby', carat: 1.8, bid: 28000, buyNow: 32000, status: 'Active', ends: '04h 15m', category: 'Ruby', color: '#ef4444', emoji: '🔴' },
-    { id: 3, name: 'Colombian Emerald', carat: 3.2, bid: 18500, buyNow: 22000, status: 'Active', ends: '1d 08h', category: 'Emerald', color: '#10b981', emoji: '💚' },
-    { id: 4, name: 'Fancy Pink Diamond', carat: 0.9, bid: 45000, buyNow: 55000, status: 'Active', ends: '06h 45m', category: 'Diamond', color: '#ec4899', emoji: '💠' },
-    { id: 5, name: 'Kashmir Sapphire', carat: 1.5, bid: 35000, buyNow: 40000, status: 'Upcoming', ends: '2d 04h', category: 'Sapphire', color: '#6366f1', emoji: '🔵' },
-    { id: 6, name: 'Paraiba Tourmaline', carat: 4.1, bid: 18000, buyNow: 21000, status: 'Active', ends: '18h 20m', category: 'Tourmaline', color: '#14b8a6', emoji: '🟢' },
+    { id: 1, name: 'Royal Blue Sapphire', carat: 2.5, bid: 12500, buyNow: 15000, status: 'Active', ends: '12h 30m', category: 'Sapphire', color: '#3b82f6', emoji: '💎', bids: 14 },
+    { id: 2, name: 'Pigeon Blood Ruby', carat: 1.8, bid: 28000, buyNow: 32000, status: 'Active', ends: '04h 15m', category: 'Ruby', color: '#ef4444', emoji: '🔴', bids: 32 },
+    { id: 3, name: 'Colombian Emerald', carat: 3.2, bid: 18500, buyNow: 22000, status: 'Active', ends: '1d 08h', category: 'Emerald', color: '#10b981', emoji: '💚', bids: 8 },
+    { id: 4, name: 'Fancy Pink Diamond', carat: 0.9, bid: 45000, buyNow: 55000, status: 'Ending', ends: '00h 45m', category: 'Diamond', color: '#ec4899', emoji: '💠', bids: 54 },
+    { id: 5, name: 'Kashmir Sapphire', carat: 1.5, bid: 35000, buyNow: 40000, status: 'Upcoming', ends: '2d 04h', category: 'Sapphire', color: '#6366f1', emoji: '🔵', bids: 0 },
+    { id: 6, name: 'Paraiba Tourmaline', carat: 4.1, bid: 18000, buyNow: 21000, status: 'Active', ends: '18h 20m', category: 'Tourmaline', color: '#14b8a6', emoji: '🟢', bids: 21 },
 ];
 
 
 
 /* ════════════════════════════════════════════════════
-   ADD GEM MODAL
-════════════════════════════════════════════════════ */
-const AddGemModal = ({ onClose }) => (
-    <div style={{
-        position: 'fixed', inset: 0, zIndex: 100,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-        background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(10px)',
-    }} onClick={onClose}>
-        <div style={{
-            width: '100%', maxWidth: 580,
-            background: '#0f1220',
-            border: `1px solid rgba(245,158,11,0.25)`,
-            borderRadius: 20, padding: 32,
-            boxShadow: `0 30px 80px rgba(0,0,0,0.8), 0 0 50px rgba(245,158,11,0.08)`,
-            position: 'relative', overflow: 'hidden',
-        }} onClick={e => e.stopPropagation()}>
-            {/* Glow */}
-            <div style={{ position: 'absolute', top: -50, right: -50, width: 180, height: 180, borderRadius: '50%', background: 'rgba(245,158,11,0.05)', filter: 'blur(40px)', pointerEvents: 'none' }} />
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, paddingBottom: 16, borderBottom: `1px solid ${C.border}` }}>
-                <div>
-                    <div style={{ color: C.text, fontWeight: 900, fontSize: '1.2rem' }}>List a New Gem</div>
-                    <div style={{ color: C.muted, fontSize: '0.75rem', marginTop: 2 }}>Enter your gemstone details to create a listing</div>
-                </div>
-                <button onClick={onClose} style={{
-                    width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`,
-                    background: 'transparent', color: C.muted, cursor: 'pointer',
-                    fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>✕</button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                {[
-                    { label: 'GEM NAME', placeholder: 'e.g. Royal Blue Sapphire', type: 'text' },
-                    { label: 'CARAT WEIGHT', placeholder: '0.00 ct', type: 'number' },
-                    { label: 'STARTING BID ($)', placeholder: '0', type: 'number' },
-                    { label: 'BUY NOW ($)', placeholder: '0', type: 'number' },
-                ].map(f => (
-                    <div key={f.label}>
-                        <label style={{ display: 'block', color: C.dim, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>{f.label}</label>
-                        <input type={f.type} placeholder={f.placeholder} style={{
-                            width: '100%', background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`,
-                            borderRadius: 9, padding: '10px 13px', color: C.text, fontSize: '0.85rem',
-                            outline: 'none', boxSizing: 'border-box',
-                        }}
-                            onFocus={e => { e.target.style.borderColor = `${C.gold}70`; e.target.style.boxShadow = `0 0 0 3px rgba(245,158,11,0.08)`; }}
-                            onBlur={e => { e.target.style.borderColor = C.border; e.target.style.boxShadow = 'none'; }}
-                        />
-                    </div>
-                ))}
-                <div>
-                    <label style={{ display: 'block', color: C.dim, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>CATEGORY</label>
-                    <select style={{ width: '100%', background: '#0a0d14', border: `1px solid ${C.border}`, borderRadius: 9, padding: '10px 13px', color: C.text, fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}>
-                        {['Sapphire', 'Ruby', 'Emerald', 'Diamond', 'Tourmaline'].map(c => <option key={c}>{c}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label style={{ display: 'block', color: C.dim, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>AUCTION DURATION</label>
-                    <select style={{ width: '100%', background: '#0a0d14', border: `1px solid ${C.border}`, borderRadius: 9, padding: '10px 13px', color: C.text, fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}>
-                        {['24 Hours', '48 Hours', '72 Hours', '1 Week'].map(d => <option key={d}>{d}</option>)}
-                    </select>
-                </div>
-            </div>
-
-            {/* Dropzone */}
-            <div style={{
-                marginTop: 16, border: `2px dashed rgba(245,158,11,0.25)`, borderRadius: 12,
-                padding: '26px', textAlign: 'center', cursor: 'pointer', background: 'rgba(245,158,11,0.03)',
-                transition: 'all 0.2s',
-            }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = `${C.gold}50`; e.currentTarget.style.background = 'rgba(245,158,11,0.07)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(245,158,11,0.25)'; e.currentTarget.style.background = 'rgba(245,158,11,0.03)'; }}
-            >
-                <div style={{ fontSize: '1.5rem', marginBottom: 6 }}>📁</div>
-                <div style={{ color: C.muted, fontSize: '0.8rem', fontWeight: 600 }}>
-                    Drop gem images here or <span style={{ color: C.gold }}>click to browse</span>
-                </div>
-                <div style={{ color: C.dim, fontSize: '0.68rem', marginTop: 4 }}>High-resolution PNG or JPG · max 10 MB each</div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
-                <button onClick={onClose} style={{
-                    padding: '10px 22px', borderRadius: 9, border: `1px solid ${C.border}`,
-                    background: 'transparent', color: C.muted, fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
-                }}>Cancel</button>
-                <button style={{
-                    padding: '10px 26px', borderRadius: 9, border: 'none',
-                    background: 'linear-gradient(135deg,#f59e0b,#d97706)',
-                    color: '#0a0d14', fontSize: '0.82rem', fontWeight: 900,
-                    cursor: 'pointer', boxShadow: goldGlow, letterSpacing: '0.03em',
-                    transition: 'all 0.2s',
-                }}
-                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 30px rgba(245,158,11,0.6)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.boxShadow = goldGlow; e.currentTarget.style.transform = 'translateY(0)'; }}
-                >LIST GEM ✦</button>
-            </div>
-        </div>
-    </div>
-);
-
-/* ════════════════════════════════════════════════════
    MAIN DASHBOARD PAGE
 ════════════════════════════════════════════════════ */
-const SellerDashboard = () => {
-    const [activePage, setActivePage] = useState('listings');
-    const [showModal, setShowModal] = useState(false);
+const BuyerDashboard = () => {
+    const [activePage, setActivePage] = useState('auctions');
     const [filter, setFilter] = useState('All');
     const [search, setSearch] = useState('');
 
@@ -270,19 +149,19 @@ const SellerDashboard = () => {
     return (
         <div style={{ minHeight: '100vh', background: C.bg, fontFamily: "'Inter','Segoe UI',sans-serif", color: C.text }}>
             {/* ── Navbar ── */}
-            <Navbar active={activePage} setActive={setActivePage} onListGem={() => setShowModal(true)} />
+            <Navbar active={activePage} setActive={setActivePage} />
 
             {/* ── Page content ── */}
-            <main style={{ maxWidth: 1400, margin: '0 auto', padding: '36px 32px' }}>
+            <main style={{ maxWidth: 1400, margin: '0 auto', padding: '40px 32px' }}>
 
-                {/* Page title */}
-                <div style={{ marginBottom: 28 }}>
-                    <h1 style={{ fontSize: '1.6rem', fontWeight: 900, letterSpacing: '-0.03em', color: C.text, margin: 0 }}>
-                        My Gem Listings
-                    </h1>
-                    <p style={{ color: C.muted, fontSize: '0.85rem', marginTop: 6 }}>
-                        {filtered.length} gems · track bids &amp; manage your active auctions
-                    </p>
+                {/* Header Section */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 40, flexWrap: 'wrap', gap: 20 }}>
+                    <div>
+                        <div style={{ color: C.gold, fontWeight: 800, fontSize: '0.85rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Buyer Dashboard</div>
+                        <h1 style={{ fontSize: '2.2rem', fontWeight: 900, letterSpacing: '-0.03em', color: C.text, margin: 0, lineHeight: 1.1 }}>
+                            Discover Exceptional Gems
+                        </h1>
+                    </div>
                 </div>
 
                 {/* ── Filter bar with search ── */}
@@ -297,7 +176,7 @@ const SellerDashboard = () => {
                     {/* Filter by label + pills */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.gold, fontSize: '0.8rem', fontWeight: 700, flexShrink: 0 }}>
-                            <Filter size={14} /> Filter by
+                            <Filter size={14} /> Categories
                         </div>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                             {categories.map(c => (
@@ -312,17 +191,17 @@ const SellerDashboard = () => {
                         </div>
                     </div>
 
-                    {/* Search — right side of filter bar (picture 3 position) */}
+                    {/* Search */}
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                         <Search size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: C.dim }} />
                         <input
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            placeholder="Search gems…"
+                            placeholder="Search gemstones…"
                             style={{
                                 background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.border}`,
-                                borderRadius: 9, padding: '7px 14px 7px 32px',
-                                color: C.text, fontSize: '0.82rem', outline: 'none', width: 200,
+                                borderRadius: 9, padding: '8px 14px 8px 32px',
+                                color: C.text, fontSize: '0.85rem', outline: 'none', width: 220,
                                 transition: 'border-color 0.2s',
                             }}
                             onFocus={e => { e.target.style.borderColor = `${C.gold}60`; }}
@@ -331,11 +210,17 @@ const SellerDashboard = () => {
                     </div>
                 </div>
 
+                {/* ── Trending Section Header ── */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.green, boxShadow: `0 0 10px ${C.green}` }} />
+                    <h2 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Live Auctions</h2>
+                </div>
+
                 {/* ── Gem auction cards grid ── */}
                 {filtered.length > 0 ? (
                     <div style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                         gap: 24,
                     }}>
                         {filtered.map(gem => (
@@ -349,7 +234,7 @@ const SellerDashboard = () => {
                                     currentBid: gem.bid,
                                     buyNow: gem.buyNow,
                                     gemType: gem.category.toLowerCase(),
-                                    isVerified: gem.status === 'Active' || gem.status === 'Ending'
+                                    isVerified: gem.status === 'Active'
                                 }}
                             />
                         ))}
@@ -369,7 +254,7 @@ const SellerDashboard = () => {
                 background: 'rgba(0,0,0,0.25)',
                 backdropFilter: 'blur(12px)',
                 padding: '60px 32px 32px',
-                marginTop: 20,
+                marginTop: 40,
             }}>
                 <div style={{ maxWidth: 1400, margin: '0 auto' }}>
                     {/* Top row */}
@@ -464,11 +349,8 @@ const SellerDashboard = () => {
                     </div>
                 </div>
             </footer>
-
-            {/* Modal */}
-            {showModal && <AddGemModal onClose={() => setShowModal(false)} />}
         </div>
     );
 };
 
-export default SellerDashboard;
+export default BuyerDashboard;

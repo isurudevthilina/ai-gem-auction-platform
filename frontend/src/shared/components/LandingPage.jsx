@@ -1,11 +1,11 @@
-import { useTheme } from '../context/ThemeContext';
-import Navbar from '../components/Navbar';
-import Hero from '../components/Hero';
-import Features from '../components/Features';
-import AboutUs from '../components/AboutUs';
-import AIPredictor from '../components/AIPredictor';
-import FAQ from '../components/FAQ';
-import Footer from '../components/Footer';
+import { useTheme } from '../../context/ThemeContext';
+import Navbar from './Navbar';
+import Hero from './Hero';
+import Features from './Features';
+import AboutUs from './AboutUs';
+import AIPredictor from './AIPredictor';
+import FAQ from './FAQ';
+import Footer from './Footer';
 
 const LandingPage = () => {
     const { isDark } = useTheme();

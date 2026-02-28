@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 
 /* ─────────────────────────────────────────────

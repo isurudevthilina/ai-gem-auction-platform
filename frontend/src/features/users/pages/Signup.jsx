@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import AuthLayout from '../components/AuthLayout';
-import { useTheme } from '../context/ThemeContext';
+import AuthLayout from '../../../shared/components/AuthLayout';
+import { useTheme } from '../../../context/ThemeContext';
 
 const Signup = () => {
     const navigate = useNavigate();

@@ -1,4 +1,4 @@
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext';
 import { motion } from 'framer-motion';
 
 const AuthLayout = ({ children, title, subtitle, welcomeText = "Discover the Gem of Your Dreams", welcomeSub = "Sign in to access world-class gemstone auctions" }) => {
