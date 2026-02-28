@@ -6,7 +6,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 // Now import Supabase config (which needs the env vars)
-const { testConnection } = require('./config/supabase');
+const { testConnection } = require('./src/config/supabase');
 
 // Test Supabase connection
 testConnection();
@@ -31,7 +31,12 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // Routes
-app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/users', require('./src/modules/users/users.routes'));
+app.use('/api/gems', require('./src/modules/gems/gems.routes'));
+app.use('/api/auctions', require('./src/modules/auctions/auctions.routes'));
+app.use('/api/watchlist', require('./src/modules/watchlist/watchlist.routes'));
+app.use('/api/reviews', require('./src/modules/reviews/reviews.routes'));
+app.use('/api/certificates', require('./src/modules/certificates/certificates.routes'));
 
 // Health check route
 app.get('/api/health', (req, res) => {
