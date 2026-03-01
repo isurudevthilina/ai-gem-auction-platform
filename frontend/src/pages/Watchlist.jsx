@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import FolderSidebar from "../components/watchlist/FolderSidebar";
-import WatchlistGrid from "../components/watchlist/WatchlistGrid";
-import MoveToFolderModal from "../components/watchlist/MoveToFolderModal";
+import FolderSidebar from "../components/FolderSidebar";
+import WatchlistGrid from "../components/WatchlistGrid";
+import MoveToFolderModal from "../components/MoveToFolderModal";
 
 // Simple mock folders (user cannot create new ones)
 const INITIAL_FOLDERS = [

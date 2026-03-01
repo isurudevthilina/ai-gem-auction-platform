@@ -8,6 +8,7 @@ import BuyerDashboard from './pages/BuyerDashboard';
 import Profile from './pages/Profile';
 import GemDetails from './pages/GemDetails';
 import AdminDashboard from './pages/AdminDashboard';
+import Watchlist from './pages/Watchlist';
 
 function App() {
     return (
@@ -22,6 +23,7 @@ function App() {
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/gem/:id" element={<GemDetails />} />
                     <Route path="/admin-dashboard" element={<AdminDashboard />} />
+                    <Route path="/watchlist" element={<Watchlist />} />
                 </Routes>
             </Router>
         </ThemeProvider>
