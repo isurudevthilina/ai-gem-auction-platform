@@ -335,7 +335,28 @@ const SellerDashboard = () => {
                     getMyGems(session.user.id),
                     getCategories(),
                 ]);
-                setGems(myGems);
+
+                // Merge active auction info (auction_id, auction_end_time) into each gem
+                if (myGems.length > 0) {
+                    const gemIds = myGems.map(g => g.id);
+                    const { data: activeAuctions } = await supabase
+                        .from('auctions')
+                        .select('id, gem_id, end_time, status')
+                        .in('gem_id', gemIds)
+                        .in('status', ['active', 'pending', 'upcoming']);
+
+                    const auctionByGem = {};
+                    (activeAuctions || []).forEach(a => { auctionByGem[a.gem_id] = a; });
+
+                    const enriched = myGems.map(g => ({
+                        ...g,
+                        auction_id:       auctionByGem[g.id]?.id       ?? null,
+                        auction_end_time: auctionByGem[g.id]?.end_time ?? null,
+                    }));
+                    setGems(enriched);
+                } else {
+                    setGems(myGems);
+                }
                 setCategories(cats);
             } catch (err) {
                 console.error('Failed to load gems/categories:', err);

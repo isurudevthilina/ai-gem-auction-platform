@@ -178,8 +178,8 @@ const BuyerDashboard = () => {
         setAuctLoading(true);
         setAuctError('');
         try {
-            const data = await getAuctions({ status: 'active', limit: 24 });
-            setAuctions(data || []);
+            const res = await getAuctions({ status: 'active', limit: 24 });
+            setAuctions(res.data || []);
         } catch {
             setAuctError('Failed to load auctions.');
         } finally {

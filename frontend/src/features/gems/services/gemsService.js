@@ -11,9 +11,8 @@ import { supabase } from '../../../config/supabase';
 export const getMyGems = async (sellerId) => {
     const { data, error } = await supabase
         .from('gems')
-        .select('id, title, carat_weight, status, buy_now_price, image_url, category:categories(id, name)')
+        .select('id, title, carat_weight, color, clarity, status, buy_now_price, image_url, category:categories(id, name)')
         .eq('seller_id', sellerId)
-        .neq('status', 'sold')
         .order('created_at', { ascending: false });
     if (error) throw error;
     return data ?? [];
