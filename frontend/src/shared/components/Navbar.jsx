@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 
 const Navbar = () => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const { isDark, toggleTheme } = useTheme();
-    const navigate = useNavigate();
+    const navigate  = useNavigate();
+    const location  = useLocation();
+    const onAuctions = location.pathname.startsWith('/auctions');
 
     useEffect(() => {
         const handleScroll = () => setIsScrolled(window.scrollY > 10);
@@ -57,6 +59,35 @@ const Navbar = () => {
                                 onMouseLeave={e => { e.target.style.color = isDark ? '#94a3b8' : '#374151'; e.target.style.background = 'transparent'; }}
                             >{link}</a>
                         ))}
+                        {/* ── Auctions page link ── */}
+                        <Link
+                            to="/auctions"
+                            style={{
+                                color:          onAuctions ? '#f59e0b' : (isDark ? '#94a3b8' : '#374151'),
+                                textDecoration: 'none',
+                                fontSize:       '0.875rem',
+                                fontWeight:     onAuctions ? 700 : 500,
+                                padding:        '7px 14px',
+                                borderRadius:   '8px',
+                                background:     onAuctions ? 'rgba(245,158,11,0.12)' : 'transparent',
+                                border:         onAuctions ? '1px solid rgba(245,158,11,0.25)' : '1px solid transparent',
+                                transition:     'all 0.2s',
+                                display:        'flex',
+                                alignItems:     'center',
+                                gap:            5,
+                            }}
+                            onMouseEnter={e => {
+                                e.currentTarget.style.color = '#f59e0b';
+                                e.currentTarget.style.background = 'rgba(245,158,11,0.1)';
+                            }}
+                            onMouseLeave={e => {
+                                e.currentTarget.style.color = onAuctions ? '#f59e0b' : (isDark ? '#94a3b8' : '#374151');
+                                e.currentTarget.style.background = onAuctions ? 'rgba(245,158,11,0.12)' : 'transparent';
+                            }}
+                        >
+                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 5px #10b981', flexShrink: 0 }} />
+                            Auctions
+                        </Link>
                     </nav>
 
                     {/* Actions */}

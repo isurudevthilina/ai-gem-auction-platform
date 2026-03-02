@@ -2,12 +2,41 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthLayout from '../../../shared/components/AuthLayout';
 import { useTheme } from '../../../context/ThemeContext';
+import { supabase } from '../../../config/supabase';
 
 const Signup = () => {
     const navigate = useNavigate();
     const { isDark } = useTheme();
     const [role, setRole] = useState('buyer');
     const [focusedField, setFocusedField] = useState(null);
+    const [fullName,  setFullName]  = useState('');
+    const [email,     setEmail]     = useState('');
+    const [password,  setPassword]  = useState('');
+    const [confirm,   setConfirm]   = useState('');
+    const [loading,   setLoading]   = useState(false);
+    const [error,     setError]     = useState(null);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError(null);
+        if (password !== confirm) return setError('Passwords do not match.');
+        if (password.length < 6)  return setError('Password must be at least 6 characters.');
+        setLoading(true);
+        try {
+            const { data, error: signUpErr } = await supabase.auth.signUp({
+                email,
+                password,
+                options: { data: { full_name: fullName, role } },
+            });
+            if (signUpErr) throw signUpErr;
+            // Supabase may need email confirmation — navigate based on role
+            navigate(role === 'seller' ? '/seller-dashboard' : '/buyer-dashboard');
+        } catch (err) {
+            setError(err.message ?? 'Sign up failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const inputWrapperStyle = (isFocused) => ({
         marginBottom: '24px',
@@ -48,7 +77,7 @@ const Signup = () => {
             welcomeText="Join the GemBid Marketplace"
             welcomeSub="Start your journey in the world's most trusted gemstone auction platform"
         >
-            <form onSubmit={(e) => { e.preventDefault(); navigate('/login'); }}>
+            <form onSubmit={handleSubmit}>
 
                 {/* Role Switcher */}
                 <div style={{ marginBottom: '32px' }}>
@@ -98,6 +127,8 @@ const Signup = () => {
                         <input
                             type="text"
                             placeholder="Enter your full name"
+                            value={fullName}
+                            onChange={e => setFullName(e.target.value)}
                             style={inputStyle}
                             onFocus={() => setFocusedField('name')}
                             onBlur={() => setFocusedField(null)}
@@ -112,6 +143,8 @@ const Signup = () => {
                         <input
                             type="email"
                             placeholder="Enter your email"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
                             style={inputStyle}
                             onFocus={() => setFocusedField('email')}
                             onBlur={() => setFocusedField(null)}
@@ -126,6 +159,8 @@ const Signup = () => {
                         <input
                             type="password"
                             placeholder="Create a password (min. 6 characters)"
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
                             style={inputStyle}
                             onFocus={() => setFocusedField('pass')}
                             onBlur={() => setFocusedField(null)}
@@ -140,6 +175,8 @@ const Signup = () => {
                         <input
                             type="password"
                             placeholder="Re-enter your password"
+                            value={confirm}
+                            onChange={e => setConfirm(e.target.value)}
                             style={inputStyle}
                             onFocus={() => setFocusedField('confirmPass')}
                             onBlur={() => setFocusedField(null)}
@@ -161,7 +198,12 @@ const Signup = () => {
                     </div>
                 </div>
 
-                <button type="submit" style={{
+                {error && (
+                    <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: '0.82rem' }}>
+                        {error}
+                    </div>
+                )}
+                <button type="submit" disabled={loading} style={{
                     width: '100%',
                     padding: '14px',
                     background: 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)',
@@ -171,7 +213,7 @@ const Signup = () => {
                     fontSize: '0.9rem',
                     fontWeight: 800,
                     letterSpacing: '1px',
-                    cursor: 'pointer',
+                    cursor: loading ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -181,10 +223,10 @@ const Signup = () => {
                     boxShadow: '0 4px 20px rgba(245, 158, 11, 0.25)',
                     transition: 'all 0.2s'
                 }}
-                    onMouseEnter={e => { e.target.style.transform = 'translateY(-1px)'; e.target.style.boxShadow = '0 6px 25px rgba(245, 158, 11, 0.35)'; }}
-                    onMouseLeave={e => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 20px rgba(245, 158, 11, 0.25)'; }}
+                    onMouseEnter={e => { if (!loading) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 25px rgba(245, 158, 11, 0.35)'; }}}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(245, 158, 11, 0.25)'; }}
                 >
-                    CONTINUE
+                    {loading ? 'Creating account…' : 'CONTINUE'}
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
                     </svg>
