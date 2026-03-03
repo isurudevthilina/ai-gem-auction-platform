@@ -80,13 +80,15 @@ The AI Price Prediction feature behaves similarly to *gemval.com*.
 |---|---|
 | `profiles` | `id` (FK → auth.users), `email`, `full_name`, `avatar_url`, `role` (admin/seller/buyer), `is_verified`, timestamps |
 | `categories` | `id`, `name`, `slug`, `description`, `parent_id` (self-referencing for sub-categories) |
-| `gems` | `id`, `seller_id`, `category_id`, `title`, `description`, `carat_weight`, `color`, `clarity`, `cut`, `origin`, `certification`, `images[]`, `listing_type` (auction/direct_sell), `status` (draft/listed/in_auction/sold), `buy_now_price`, `predicted_price` (from ML), timestamps |
+| `gems` | `id`, `seller_id`, `category_id`, `title`, `description`, `carat_weight`, `color`, `clarity`, `cut`, `origin`, `treatment`, `certification`, `images[]`, `listing_type` (auction/direct_sell), `status` (draft/listed/in_auction/sold), `buy_now_price`, `predicted_price` (from ML), timestamps |
 | `auctions` | `id`, `gem_id` (unique), `seller_id`, `starting_price`, `reserve_price`, `current_price`, `min_bid_increment`, `start_time`, `end_time`, `status` (scheduled/active/completed/cancelled/reserve_not_met), `winner_id`, `bid_count`, timestamps |
 | `bids` | `id`, `auction_id`, `bidder_id`, `amount`, `is_winning`, `created_at` (immutable) |
 | `transactions` | `id`, `auction_id`, `gem_id`, `buyer_id`, `seller_id`, `amount`, `type` (auction_win/buy_now), `status` (pending/completed/disputed/refunded), `payment_reference`, timestamps |
 | `notifications` | `id`, `user_id`, `type` (outbid/auction_won/auction_ending/etc.), `title`, `message`, `data` (JSONB), `is_read`, `created_at` |
 | `watchlist_folders` | `id`, `user_id`, `name` (e.g. "Sapphires I want", "Gifts"), timestamps |
 | `watchlist` | `id`, `user_id`, `auction_id`, `folder_id` (FK → watchlist_folders), UNIQUE(user_id, auction_id) |
+| `certificates` | `id`, `gem_id` (FK → gems), `seller_id` (FK → profiles), `certificate_number`, `issued_by` (GIA/AGS/IGI/GRS/GIT/GGTL/Other), `issued_date`, `document_url`, `status` (pending/verified/rejected), `verified_by` (FK → profiles, admin), `verified_at`, `notes` (admin rejection reason), timestamps |
+| `reviews` | `id`, `reviewer_id` (FK → profiles, buyer), `seller_id` (FK → profiles), `transaction_id` (FK → transactions, ensures post-purchase only), `rating` (1–5 integer), `comment`, UNIQUE(reviewer_id, transaction_id), timestamps |
 
 ### Critical DB Function — Atomic Bid Placement
 Postgres function `place_bid(auction_id, bidder_id, amount)` runs atomically to:

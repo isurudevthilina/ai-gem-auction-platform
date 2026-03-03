@@ -431,3 +431,180 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.complete_expired_auctions() TO service_role;
+
+-- ============================================================
+-- GemBid — Migration: Certificates & Reviews
+-- Run this in Supabase Dashboard → SQL Editor → New Query
+-- Run AFTER combined_migration.sql
+-- ============================================================
+
+-- ─────────────────────────────────────────────
+-- 9. CERTIFICATES
+-- Stores gem certification documents uploaded by sellers.
+-- Admin verifies or rejects each submission.
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.certificates (
+    id                 UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    gem_id             UUID        NOT NULL REFERENCES public.gems(id)     ON DELETE CASCADE,
+    seller_id          UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    certificate_number TEXT,
+    issued_by          TEXT        NOT NULL DEFAULT 'Other'
+                           CHECK (issued_by IN ('GIA', 'AGS', 'IGI', 'GRS', 'GIT', 'GGTL', 'Other')),
+    issued_date        DATE,
+    document_url       TEXT        NOT NULL,
+    status             TEXT        NOT NULL DEFAULT 'pending'
+                           CHECK (status IN ('pending', 'verified', 'rejected')),
+    verified_by        UUID        REFERENCES public.profiles(id) ON DELETE SET NULL,
+    verified_at        TIMESTAMPTZ,
+    notes              TEXT,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- One certificate per gem
+CREATE UNIQUE INDEX IF NOT EXISTS idx_certificates_gem_id    ON public.certificates(gem_id);
+CREATE INDEX        IF NOT EXISTS idx_certificates_status    ON public.certificates(status);
+CREATE INDEX        IF NOT EXISTS idx_certificates_seller_id ON public.certificates(seller_id);
+
+-- Shared updated_at trigger function
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS certificates_updated_at ON public.certificates;
+CREATE TRIGGER certificates_updated_at
+    BEFORE UPDATE ON public.certificates
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- RLS — CERTIFICATES
+ALTER TABLE public.certificates ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "certs_read_own_or_admin_or_verified" ON public.certificates;
+CREATE POLICY "certs_read_own_or_admin_or_verified"
+    ON public.certificates FOR SELECT
+    USING (
+        seller_id = auth.uid()
+        OR status = 'verified'
+        OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+
+DROP POLICY IF EXISTS "certs_insert_seller" ON public.certificates;
+CREATE POLICY "certs_insert_seller"
+    ON public.certificates FOR INSERT
+    WITH CHECK (auth.uid() = seller_id);
+
+DROP POLICY IF EXISTS "certs_update_seller_or_admin" ON public.certificates;
+CREATE POLICY "certs_update_seller_or_admin"
+    ON public.certificates FOR UPDATE
+    USING (
+        (auth.uid() = seller_id AND status = 'pending')
+        OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+
+DROP POLICY IF EXISTS "certs_delete_seller" ON public.certificates;
+CREATE POLICY "certs_delete_seller"
+    ON public.certificates FOR DELETE
+    USING (auth.uid() = seller_id AND status = 'pending');
+
+
+-- ─────────────────────────────────────────────
+-- 10. REVIEWS
+-- Buyers leave a 1–5 rating + comment for a seller
+-- after a completed transaction. One review per transaction.
+-- ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.reviews (
+    id             UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+    reviewer_id    UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    seller_id      UUID        NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    transaction_id UUID        NOT NULL REFERENCES public.transactions(id) ON DELETE CASCADE,
+    rating         SMALLINT    NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    comment        TEXT,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT reviews_unique_per_transaction UNIQUE (reviewer_id, transaction_id),
+    CONSTRAINT reviewer_ne_seller             CHECK  (reviewer_id != seller_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_reviews_seller_id      ON public.reviews(seller_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_reviewer_id    ON public.reviews(reviewer_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_transaction_id ON public.reviews(transaction_id);
+
+DROP TRIGGER IF EXISTS reviews_updated_at ON public.reviews;
+CREATE TRIGGER reviews_updated_at
+    BEFORE UPDATE ON public.reviews
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- RLS — REVIEWS
+ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "reviews_read_all" ON public.reviews;
+CREATE POLICY "reviews_read_all"
+    ON public.reviews FOR SELECT
+    USING (true);
+
+DROP POLICY IF EXISTS "reviews_insert_buyer" ON public.reviews;
+CREATE POLICY "reviews_insert_buyer"
+    ON public.reviews FOR INSERT
+    WITH CHECK (
+        auth.uid() = reviewer_id
+        AND EXISTS (
+            SELECT 1 FROM public.transactions t
+            WHERE t.id = transaction_id
+              AND t.buyer_id = auth.uid()
+              AND t.status = 'completed'
+        )
+    );
+
+DROP POLICY IF EXISTS "reviews_update_reviewer" ON public.reviews;
+CREATE POLICY "reviews_update_reviewer"
+    ON public.reviews FOR UPDATE
+    USING (
+        auth.uid() = reviewer_id
+        AND created_at > NOW() - INTERVAL '7 days'
+    );
+
+DROP POLICY IF EXISTS "reviews_delete_reviewer_or_admin" ON public.reviews;
+CREATE POLICY "reviews_delete_reviewer_or_admin"
+    ON public.reviews FOR DELETE
+    USING (
+        auth.uid() = reviewer_id
+        OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+    );
+
+
+-- ─────────────────────────────────────────────
+-- HELPER VIEW — seller_ratings
+-- Pre-computes avg + star breakdown per seller.
+-- Usage: SELECT * FROM seller_ratings WHERE seller_id = '<uuid>';
+-- ─────────────────────────────────────────────
+CREATE OR REPLACE VIEW public.seller_ratings AS
+SELECT
+    seller_id,
+    COUNT(*)::INTEGER                          AS review_count,
+    ROUND(AVG(rating)::NUMERIC, 2)             AS avg_rating,
+    COUNT(*) FILTER (WHERE rating = 5)::INTEGER AS five_star,
+    COUNT(*) FILTER (WHERE rating = 4)::INTEGER AS four_star,
+    COUNT(*) FILTER (WHERE rating = 3)::INTEGER AS three_star,
+    COUNT(*) FILTER (WHERE rating = 2)::INTEGER AS two_star,
+    COUNT(*) FILTER (WHERE rating = 1)::INTEGER AS one_star
+FROM public.reviews
+GROUP BY seller_id;
+
+GRANT SELECT ON public.seller_ratings TO authenticated;
+
+
+-- ─────────────────────────────────────────────
+-- GEMS TABLE — add treatment column
+-- (used by AI Predictor; safe to re-run)
+-- ─────────────────────────────────────────────
+ALTER TABLE public.gems
+    ADD COLUMN IF NOT EXISTS treatment TEXT DEFAULT 'None'
+        CHECK (treatment IN ('None', 'Heat Treated', 'Fracture Filled', 'Irradiation'));
+
+-- ============================================================
+-- END OF MIGRATION
+-- ============================================================
