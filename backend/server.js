@@ -34,6 +34,7 @@ if (process.env.NODE_ENV === 'development') {
 app.use('/api/users', require('./src/modules/users/users.routes'));
 app.use('/api/gems', require('./src/modules/gems/gems.routes'));
 app.use('/api/auctions', require('./src/modules/auctions/auctions.routes'));
+app.use('/api/auctions/:id/bids', require('./src/modules/auctions/bids.routes'));
 app.use('/api/watchlist', require('./src/modules/watchlist/watchlist.routes'));
 app.use('/api/reviews', require('./src/modules/reviews/reviews.routes'));
 app.use('/api/certificates', require('./src/modules/certificates/certificates.routes'));

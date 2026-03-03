@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Plus, Search, Clock, CheckCircle, ChevronDown, LogOut,
-    Home, List, Sparkles, Filter
+    Plus, Search, ChevronDown, Home, List, Sparkles, Filter
 } from 'lucide-react';
-import GemCard from '../../../shared/components/GemCard';
+import Countdown from '../../auctions/components/Countdown';
+import CreateAuctionModal from '../../auctions/components/CreateAuctionModal';
+import { supabase } from '../../../config/supabase';
+import { getMyGems, getCategories, createGem } from '../../gems/services/gemsService';
 
 /* ─── colour tokens — mirrors landing page ─── */
 const C = {
@@ -33,7 +35,7 @@ const glassCard = {
 /* ════════════════════════════════════════════════════
    TOP NAVBAR (replaces sidebar)
 ════════════════════════════════════════════════════ */
-const Navbar = ({ active, setActive, onListGem }) => {
+const Navbar = ({ active, setActive, onListGem, profile }) => {
     const navigate = useNavigate();
 
     const navLinks = [
@@ -121,9 +123,13 @@ const Navbar = ({ active, setActive, onListGem }) => {
                         background: 'linear-gradient(135deg,#f59e0b,#ec4899)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontWeight: 900, fontSize: '0.82rem', color: '#fff', flexShrink: 0,
-                    }}>AS</div>
+                    }}>
+                        {profile?.full_name
+                            ? profile.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                            : '?'}
+                    </div>
                     <div style={{ lineHeight: 1.25 }}>
-                        <div style={{ color: C.text, fontWeight: 700, fontSize: '0.8rem' }}>Amara Silva</div>
+                        <div style={{ color: C.text, fontWeight: 700, fontSize: '0.8rem' }}>{profile?.full_name ?? 'Seller'}</div>
                         <div style={{ color: C.green, fontSize: '0.65rem', fontWeight: 600 }}>✓ Verified Seller</div>
                     </div>
                     <ChevronDown size={14} style={{ color: C.dim }} />
@@ -136,29 +142,50 @@ const Navbar = ({ active, setActive, onListGem }) => {
 };
 
 /* ════════════════════════════════════════════════════
-   GEM DATA
+   ADD GEM MODAL  (saves to Supabase `gems` table)
 ════════════════════════════════════════════════════ */
-const gems = [
-    { id: 1, name: 'Royal Blue Sapphire', carat: 2.5, bid: 12500, buyNow: 15000, status: 'Active', ends: '12h 30m', category: 'Sapphire', color: '#3b82f6', emoji: '💎' },
-    { id: 2, name: 'Pigeon Blood Ruby', carat: 1.8, bid: 28000, buyNow: 32000, status: 'Active', ends: '04h 15m', category: 'Ruby', color: '#ef4444', emoji: '🔴' },
-    { id: 3, name: 'Colombian Emerald', carat: 3.2, bid: 18500, buyNow: 22000, status: 'Active', ends: '1d 08h', category: 'Emerald', color: '#10b981', emoji: '💚' },
-    { id: 4, name: 'Fancy Pink Diamond', carat: 0.9, bid: 45000, buyNow: 55000, status: 'Active', ends: '06h 45m', category: 'Diamond', color: '#ec4899', emoji: '💠' },
-    { id: 5, name: 'Kashmir Sapphire', carat: 1.5, bid: 35000, buyNow: 40000, status: 'Upcoming', ends: '2d 04h', category: 'Sapphire', color: '#6366f1', emoji: '🔵' },
-    { id: 6, name: 'Paraiba Tourmaline', carat: 4.1, bid: 18000, buyNow: 21000, status: 'Active', ends: '18h 20m', category: 'Tourmaline', color: '#14b8a6', emoji: '🟢' },
-];
+const AddGemModal = ({ onClose, user, categories = [], onCreated }) => {
+    const [form, setForm] = useState({
+        title: '', carat_weight: '', buy_now_price: '', description: '', category_id: '',
+    });
+    const [loading, setLoading] = useState(false);
+    const [error, setError]     = useState(null);
 
+    const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError(null);
+        if (!form.title.trim())                                  return setError('Gem name is required.');
+        if (!form.carat_weight || parseFloat(form.carat_weight) <= 0) return setError('Valid carat weight required.');
+        if (!form.category_id)                                   return setError('Please select a category.');
+        if (!user?.id)                                           return setError('You must be logged in to add a gem.');
 
-/* ════════════════════════════════════════════════════
-   ADD GEM MODAL
-════════════════════════════════════════════════════ */
-const AddGemModal = ({ onClose }) => (
+        setLoading(true);
+        try {
+            const gem = await createGem({
+                title:         form.title.trim(),
+                carat_weight:  parseFloat(form.carat_weight),
+                buy_now_price: form.buy_now_price ? parseFloat(form.buy_now_price) : null,
+                description:   form.description.trim() || null,
+                category_id:   form.category_id,
+                seller_id:     user.id,
+            });
+            onCreated?.(gem);
+        } catch (err) {
+            setError(err?.message ?? 'Failed to add gem. Ensure SQL migrations have been run in Supabase.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
     <div style={{
         position: 'fixed', inset: 0, zIndex: 100,
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
         background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(10px)',
     }} onClick={onClose}>
-        <div style={{
+        <form onSubmit={handleSubmit} style={{
             width: '100%', maxWidth: 580,
             background: '#0f1220',
             border: `1px solid rgba(245,158,11,0.25)`,
@@ -174,7 +201,7 @@ const AddGemModal = ({ onClose }) => (
                     <div style={{ color: C.text, fontWeight: 900, fontSize: '1.2rem' }}>List a New Gem</div>
                     <div style={{ color: C.muted, fontSize: '0.75rem', marginTop: 2 }}>Enter your gemstone details to create a listing</div>
                 </div>
-                <button onClick={onClose} style={{
+                <button type="button" onClick={onClose} style={{
                     width: 34, height: 34, borderRadius: 8, border: `1px solid ${C.border}`,
                     background: 'transparent', color: C.muted, cursor: 'pointer',
                     fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -182,95 +209,176 @@ const AddGemModal = ({ onClose }) => (
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                {[
-                    { label: 'GEM NAME', placeholder: 'e.g. Royal Blue Sapphire', type: 'text' },
-                    { label: 'CARAT WEIGHT', placeholder: '0.00 ct', type: 'number' },
-                    { label: 'STARTING BID ($)', placeholder: '0', type: 'number' },
-                    { label: 'BUY NOW ($)', placeholder: '0', type: 'number' },
-                ].map(f => (
-                    <div key={f.label}>
-                        <label style={{ display: 'block', color: C.dim, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>{f.label}</label>
-                        <input type={f.type} placeholder={f.placeholder} style={{
-                            width: '100%', background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`,
-                            borderRadius: 9, padding: '10px 13px', color: C.text, fontSize: '0.85rem',
-                            outline: 'none', boxSizing: 'border-box',
-                        }}
-                            onFocus={e => { e.target.style.borderColor = `${C.gold}70`; e.target.style.boxShadow = `0 0 0 3px rgba(245,158,11,0.08)`; }}
-                            onBlur={e => { e.target.style.borderColor = C.border; e.target.style.boxShadow = 'none'; }}
-                        />
-                    </div>
-                ))}
+                {/* Gem Name — full width */}
+                <div style={{ gridColumn: 'span 2' }}>
+                    <label style={{ display: 'block', color: C.dim, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>GEM NAME *</label>
+                    <input
+                        type="text" value={form.title} placeholder="e.g. Royal Blue Sapphire"
+                        onChange={e => set('title', e.target.value)}
+                        style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`, borderRadius: 9, padding: '10px 13px', color: C.text, fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = `${C.gold}70`; e.target.style.boxShadow = `0 0 0 3px rgba(245,158,11,0.08)`; }}
+                        onBlur={e => { e.target.style.borderColor = C.border; e.target.style.boxShadow = 'none'; }}
+                    />
+                </div>
+                {/* Carat Weight */}
                 <div>
-                    <label style={{ display: 'block', color: C.dim, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>CATEGORY</label>
-                    <select style={{ width: '100%', background: '#0a0d14', border: `1px solid ${C.border}`, borderRadius: 9, padding: '10px 13px', color: C.text, fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}>
-                        {['Sapphire', 'Ruby', 'Emerald', 'Diamond', 'Tourmaline'].map(c => <option key={c}>{c}</option>)}
+                    <label style={{ display: 'block', color: C.dim, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>CARAT WEIGHT *</label>
+                    <input
+                        type="number" step="0.01" min="0.01" value={form.carat_weight} placeholder="0.00 ct"
+                        onChange={e => set('carat_weight', e.target.value)}
+                        style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`, borderRadius: 9, padding: '10px 13px', color: C.text, fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = `${C.gold}70`; e.target.style.boxShadow = `0 0 0 3px rgba(245,158,11,0.08)`; }}
+                        onBlur={e => { e.target.style.borderColor = C.border; e.target.style.boxShadow = 'none'; }}
+                    />
+                </div>
+                {/* Buy Now Price */}
+                <div>
+                    <label style={{ display: 'block', color: C.dim, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>BUY NOW PRICE ($)</label>
+                    <input
+                        type="number" step="0.01" min="0" value={form.buy_now_price} placeholder="Optional"
+                        onChange={e => set('buy_now_price', e.target.value)}
+                        style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`, borderRadius: 9, padding: '10px 13px', color: C.text, fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = `${C.gold}70`; e.target.style.boxShadow = `0 0 0 3px rgba(245,158,11,0.08)`; }}
+                        onBlur={e => { e.target.style.borderColor = C.border; e.target.style.boxShadow = 'none'; }}
+                    />
+                </div>
+                {/* Category — full width */}
+                <div style={{ gridColumn: 'span 2' }}>
+                    <label style={{ display: 'block', color: C.dim, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>CATEGORY *</label>
+                    <select
+                        value={form.category_id} onChange={e => set('category_id', e.target.value)}
+                        style={{ width: '100%', background: '#0a0d14', border: `1px solid ${C.border}`, borderRadius: 9, padding: '10px 13px', color: form.category_id ? C.text : C.dim, fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}
+                    >
+                        <option value="">Select a category…</option>
+                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                 </div>
-                <div>
-                    <label style={{ display: 'block', color: C.dim, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>AUCTION DURATION</label>
-                    <select style={{ width: '100%', background: '#0a0d14', border: `1px solid ${C.border}`, borderRadius: 9, padding: '10px 13px', color: C.text, fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box', cursor: 'pointer' }}>
-                        {['24 Hours', '48 Hours', '72 Hours', '1 Week'].map(d => <option key={d}>{d}</option>)}
-                    </select>
+                {/* Description — full width */}
+                <div style={{ gridColumn: 'span 2' }}>
+                    <label style={{ display: 'block', color: C.dim, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>DESCRIPTION</label>
+                    <textarea
+                        value={form.description} placeholder="Brief description of the gem (optional)"
+                        onChange={e => set('description', e.target.value)} rows={3}
+                        style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`, borderRadius: 9, padding: '10px 13px', color: C.text, fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
+                        onFocus={e => { e.target.style.borderColor = `${C.gold}70`; }}
+                        onBlur={e => { e.target.style.borderColor = C.border; }}
+                    />
                 </div>
             </div>
-
-            {/* Dropzone */}
-            <div style={{
-                marginTop: 16, border: `2px dashed rgba(245,158,11,0.25)`, borderRadius: 12,
-                padding: '26px', textAlign: 'center', cursor: 'pointer', background: 'rgba(245,158,11,0.03)',
-                transition: 'all 0.2s',
-            }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = `${C.gold}50`; e.currentTarget.style.background = 'rgba(245,158,11,0.07)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(245,158,11,0.25)'; e.currentTarget.style.background = 'rgba(245,158,11,0.03)'; }}
-            >
-                <div style={{ fontSize: '1.5rem', marginBottom: 6 }}>📁</div>
-                <div style={{ color: C.muted, fontSize: '0.8rem', fontWeight: 600 }}>
-                    Drop gem images here or <span style={{ color: C.gold }}>click to browse</span>
+            {/* Error */}
+            {error && (
+                <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: '0.8rem' }}>
+                    {error}
                 </div>
-                <div style={{ color: C.dim, fontSize: '0.68rem', marginTop: 4 }}>High-resolution PNG or JPG · max 10 MB each</div>
-            </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
-                <button onClick={onClose} style={{
+                <button type="button" onClick={onClose} style={{
                     padding: '10px 22px', borderRadius: 9, border: `1px solid ${C.border}`,
                     background: 'transparent', color: C.muted, fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
                 }}>Cancel</button>
-                <button style={{
+                <button type="submit" disabled={loading} style={{
                     padding: '10px 26px', borderRadius: 9, border: 'none',
-                    background: 'linear-gradient(135deg,#f59e0b,#d97706)',
+                    background: loading ? C.dim : 'linear-gradient(135deg,#f59e0b,#d97706)',
                     color: '#0a0d14', fontSize: '0.82rem', fontWeight: 900,
-                    cursor: 'pointer', boxShadow: goldGlow, letterSpacing: '0.03em',
-                    transition: 'all 0.2s',
-                }}
-                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 30px rgba(245,158,11,0.6)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.boxShadow = goldGlow; e.currentTarget.style.transform = 'translateY(0)'; }}
-                >LIST GEM ✦</button>
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    boxShadow: loading ? 'none' : goldGlow,
+                    letterSpacing: '0.03em', transition: 'all 0.2s',
+                }}>{loading ? 'Saving…' : 'LIST GEM ✦'}</button>
             </div>
-        </div>
+        </form>
     </div>
-);
+    );
+};
 
 /* ════════════════════════════════════════════════════
    MAIN DASHBOARD PAGE
 ════════════════════════════════════════════════════ */
 const SellerDashboard = () => {
+    const navigate = useNavigate();
     const [activePage, setActivePage] = useState('listings');
     const [showModal, setShowModal] = useState(false);
+    const [showAuctionModal, setShowAuctionModal] = useState(false);
+    const [selectedGemForAuction, setSelectedGemForAuction] = useState('');
     const [filter, setFilter] = useState('All');
     const [search, setSearch] = useState('');
 
-    const categories = ['All', 'Sapphire', 'Ruby', 'Emerald', 'Diamond', 'Tourmaline'];
+    // ── Real data state ──────────────────────────────────────────────────────
+    const [user, setUser]             = useState(null);
+    const [profile, setProfile]       = useState(null);
+    const [gems, setGems]             = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [gemsLoading, setGemsLoading] = useState(true);
+
+    // ── Load session + gems on mount ─────────────────────────────────────────
+    useEffect(() => {
+        const init = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.user) {
+                // Not logged in — redirect to login
+                navigate('/login');
+                return;
+            }
+            setUser(session.user);
+
+            // Fetch profile for display name
+            const { data: prof } = await supabase
+                .from('profiles')
+                .select('id, full_name, avatar_url, role')
+                .eq('id', session.user.id)
+                .single();
+            setProfile(prof);
+
+            // Gems + categories in parallel
+            try {
+                const [myGems, cats] = await Promise.all([
+                    getMyGems(session.user.id),
+                    getCategories(),
+                ]);
+
+                // Merge active auction info (auction_id, auction_end_time) into each gem
+                if (myGems.length > 0) {
+                    const gemIds = myGems.map(g => g.id);
+                    const { data: activeAuctions } = await supabase
+                        .from('auctions')
+                        .select('id, gem_id, end_time, status')
+                        .in('gem_id', gemIds)
+                        .in('status', ['active', 'pending', 'upcoming']);
+
+                    const auctionByGem = {};
+                    (activeAuctions || []).forEach(a => { auctionByGem[a.gem_id] = a; });
+
+                    const enriched = myGems.map(g => ({
+                        ...g,
+                        auction_id:       auctionByGem[g.id]?.id       ?? null,
+                        auction_end_time: auctionByGem[g.id]?.end_time ?? null,
+                    }));
+                    setGems(enriched);
+                } else {
+                    setGems(myGems);
+                }
+                setCategories(cats);
+            } catch (err) {
+                console.error('Failed to load gems/categories:', err);
+            } finally {
+                setGemsLoading(false);
+            }
+        };
+        init();
+    }, [navigate]);
+
+    const categoryNames = ['All', ...categories.map(c => c.name)];
 
     const filtered = gems.filter(g => {
-        const matchCat = filter === 'All' || g.category === filter;
-        const matchSearch = g.name.toLowerCase().includes(search.toLowerCase());
+        const matchCat   = filter === 'All' || g.category?.name === filter;
+        const matchSearch = (g.title ?? '').toLowerCase().includes(search.toLowerCase());
         return matchCat && matchSearch;
     });
 
     return (
         <div style={{ minHeight: '100vh', background: C.bg, fontFamily: "'Inter','Segoe UI',sans-serif", color: C.text }}>
             {/* ── Navbar ── */}
-            <Navbar active={activePage} setActive={setActivePage} onListGem={() => setShowModal(true)} />
+            <Navbar active={activePage} setActive={setActivePage} onListGem={() => setShowModal(true)} profile={profile} />
 
             {/* ── Page content ── */}
             <main style={{ maxWidth: 1400, margin: '0 auto', padding: '36px 32px' }}>
@@ -281,7 +389,7 @@ const SellerDashboard = () => {
                         My Gem Listings
                     </h1>
                     <p style={{ color: C.muted, fontSize: '0.85rem', marginTop: 6 }}>
-                        {filtered.length} gems · track bids &amp; manage your active auctions
+                        {gemsLoading ? 'Loading…' : `${filtered.length} gems · track bids & manage your active auctions`}
                     </p>
                 </div>
 
@@ -300,7 +408,7 @@ const SellerDashboard = () => {
                             <Filter size={14} /> Filter by
                         </div>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                            {categories.map(c => (
+                            {categoryNames.map(c => (
                                 <button key={c} onClick={() => setFilter(c)} style={{
                                     padding: '5px 16px', borderRadius: '999px', cursor: 'pointer',
                                     border: filter === c ? `1px solid ${C.gold}` : `1px solid ${C.border}`,
@@ -332,33 +440,114 @@ const SellerDashboard = () => {
                 </div>
 
                 {/* ── Gem auction cards grid ── */}
-                {filtered.length > 0 ? (
+                {gemsLoading ? (
+                    <div style={{ textAlign: 'center', padding: '80px 0', color: C.dim }}>
+                        <div style={{ fontSize: '2rem', marginBottom: 12, animation: 'spin 1.2s linear infinite' }}>⟳</div>
+                        <div style={{ fontSize: '0.9rem', color: C.muted }}>Loading your gems…</div>
+                    </div>
+                ) : filtered.length > 0 ? (
                     <div style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                         gap: 24,
                     }}>
-                        {filtered.map(gem => (
-                            <GemCard
-                                key={gem.id}
-                                gem={{
-                                    id: gem.id,
-                                    name: gem.name,
-                                    carat: gem.carat,
-                                    timeLeft: gem.ends,
-                                    currentBid: gem.bid,
-                                    buyNow: gem.buyNow,
-                                    gemType: gem.category.toLowerCase(),
-                                    isVerified: gem.status === 'Active' || gem.status === 'Ending'
+                        {filtered.map(gem => {
+                            const statusColor = gem.status === 'listed' ? C.green : gem.status === 'sold' ? C.indigo : C.dim;
+                            const statusLabel = gem.status === 'listed' ? '● Listed' : gem.status === 'sold' ? '✓ Sold' : '○ Draft';
+                            return (
+                                <div key={gem.id} style={{
+                                    background: 'rgba(13,17,28,0.85)',
+                                    border: `1px solid ${C.border}`,
+                                    borderRadius: 14,
+                                    backdropFilter: 'blur(18px)',
+                                    overflow: 'hidden',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    transition: 'box-shadow 0.2s',
                                 }}
-                            />
-                        ))}
+                                    onMouseEnter={e => e.currentTarget.style.boxShadow = '0 8px 32px rgba(245,158,11,0.12)'}
+                                    onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+                                >
+                                    {/* Image */}
+                                    <div style={{ height: 160, background: '#070a12', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3.5rem', position: 'relative', overflow: 'hidden' }}>
+                                        {gem.image_url
+                                            ? <img src={gem.image_url} alt={gem.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            : '💎'
+                                        }
+                                        {/* Status badge */}
+                                        <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.75)', border: `1px solid ${statusColor}50`, borderRadius: 20, padding: '3px 10px', color: statusColor, fontSize: '0.65rem', fontWeight: 700 }}>
+                                            {statusLabel}
+                                        </div>
+                                        {/* Category badge */}
+                                        {gem.category?.name && (
+                                            <div style={{ position: 'absolute', top: 10, right: 10, background: C.goldDim, border: '1px solid rgba(245,158,11,0.25)', borderRadius: 20, padding: '3px 10px', color: C.gold, fontSize: '0.65rem', fontWeight: 700 }}>
+                                                {gem.category.name}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Info */}
+                                    <div style={{ padding: '16px 18px', flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        <div>
+                                            <div style={{ color: C.text, fontWeight: 800, fontSize: '1rem', marginBottom: 3 }}>{gem.title}</div>
+                                            <div style={{ color: C.dim, fontSize: '0.75rem' }}>
+                                                {[gem.carat_weight ? `${gem.carat_weight} ct` : null, gem.color, gem.clarity].filter(Boolean).join(' · ')}
+                                            </div>
+                                        </div>
+
+                                        {gem.buy_now_price && (
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(245,158,11,0.05)', borderRadius: 8, border: '1px solid rgba(245,158,11,0.12)' }}>
+                                                <span style={{ color: C.dim, fontSize: '0.72rem', fontWeight: 600 }}>BUY NOW</span>
+                                                <span style={{ color: C.gold, fontWeight: 800, fontSize: '0.95rem' }}>${Number(gem.buy_now_price).toLocaleString()}</span>
+                                            </div>
+                                        )}
+
+                                        {/* Countdown if auction_end_time present */}
+                                        {gem.auction_end_time && (
+                                            <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10 }}>
+                                                <div style={{ color: C.dim, fontSize: '0.65rem', fontWeight: 600, letterSpacing: '0.08em', marginBottom: 4 }}>AUCTION ENDS</div>
+                                                <Countdown endTime={gem.auction_end_time} compact />
+                                            </div>
+                                        )}
+
+                                        {/* Action */}
+                                        <div style={{ marginTop: 'auto', paddingTop: 4 }}>
+                                            {gem.auction_id ? (
+                                                <button
+                                                    onClick={() => navigate(`/auctions/${gem.auction_id}`)}
+                                                    style={{ width: '100%', padding: '10px 0', borderRadius: 9, border: `1px solid rgba(99,102,241,0.4)`, background: 'rgba(99,102,241,0.1)', color: C.indigo, fontSize: '0.82rem', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s' }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(99,102,241,0.18)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(99,102,241,0.1)'}
+                                                >
+                                                    👁 View Live Auction
+                                                </button>
+                                            ) : gem.status !== 'sold' ? (
+                                                <button
+                                                    onClick={() => { setSelectedGemForAuction(gem.id); setShowAuctionModal(true); }}
+                                                    style={{ width: '100%', padding: '10px 0', borderRadius: 9, border: 'none', background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#0a0d14', fontSize: '0.82rem', fontWeight: 900, cursor: 'pointer', boxShadow: '0 0 18px rgba(245,158,11,0.28)', letterSpacing: '0.02em', transition: 'all 0.2s' }}
+                                                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 28px rgba(245,158,11,0.5)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 18px rgba(245,158,11,0.28)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                                                >
+                                                    🔨 Start Auction
+                                                </button>
+                                            ) : (
+                                                <div style={{ width: '100%', textAlign: 'center', color: C.dim, fontSize: '0.82rem', fontWeight: 600, padding: '10px 0' }}>● Sold</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 ) : (
                     <div style={{ textAlign: 'center', padding: '80px 0', color: C.dim }}>
-                        <div style={{ fontSize: '3rem', marginBottom: 12 }}>🔍</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: C.muted }}>No gems found</div>
-                        <div style={{ fontSize: '0.82rem', marginTop: 4 }}>Try changing your search or filter.</div>
+                        <div style={{ fontSize: '3rem', marginBottom: 12 }}>{search || filter !== 'All' ? '🔍' : '💎'}</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: C.muted }}>
+                            {search || filter !== 'All' ? 'No gems match your filter' : 'No gems listed yet'}
+                        </div>
+                        <div style={{ fontSize: '0.82rem', marginTop: 4 }}>
+                            {search || filter !== 'All' ? 'Try changing your search or filter.' : 'Click "List Gem" above to add your first gemstone.'}
+                        </div>
                     </div>
                 )}
             </main>
@@ -465,8 +654,64 @@ const SellerDashboard = () => {
                 </div>
             </footer>
 
-            {/* Modal */}
-            {showModal && <AddGemModal onClose={() => setShowModal(false)} />}
+            {/* Modals */}
+            {showModal && (
+                <AddGemModal
+                    onClose={() => setShowModal(false)}
+                    user={user}
+                    categories={categories}
+                    onCreated={(gem) => {
+                        setGems(prev => [gem, ...prev]);
+                        setShowModal(false);
+                    }}
+                />
+            )}
+            {showAuctionModal && (
+                <CreateAuctionModal
+                    sellerGems={gems.map(g => ({ id: g.id, title: g.title }))}
+                    preSelectedGemId={selectedGemForAuction}
+                    onClose={() => { setShowAuctionModal(false); setSelectedGemForAuction(''); }}
+                    onCreated={(auction) => {
+                        setShowAuctionModal(false);
+                        setSelectedGemForAuction('');
+                        navigate(`/auctions/${auction.id}`);
+                    }}
+                />
+            )}
+
+            {/* Quick-access Create Auction FAB */}
+            <button
+                onClick={() => setShowAuctionModal(true)}
+                title="Start Live Auction"
+                style={{
+                    position:   'fixed',
+                    bottom:     28,
+                    right:      28,
+                    zIndex:     80,
+                    width:      54,
+                    height:     54,
+                    borderRadius:'50%',
+                    background: 'linear-gradient(135deg,#f59e0b,#d97706)',
+                    border:     'none',
+                    boxShadow:  '0 6px 24px rgba(245,158,11,0.5)',
+                    cursor:     'pointer',
+                    display:    'flex',
+                    alignItems: 'center',
+                    justifyContent:'center',
+                    transition: 'all 0.2s',
+                    color:      '#0a0d14',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform='scale(1.12)'; e.currentTarget.style.boxShadow='0 8px 32px rgba(245,158,11,0.7)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.boxShadow='0 6px 24px rgba(245,158,11,0.5)'; }}
+            >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="m14.5 12.5-8 8a2.119 2.119 0 1 1-3-3l8-8" />
+                    <path d="m16 16 6-6" />
+                    <path d="m8 8 6-6" />
+                    <path d="m9 7 8 8" />
+                    <path d="m21 11-8-8" />
+                </svg>
+            </button>
         </div>
     );
 };

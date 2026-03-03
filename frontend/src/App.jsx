@@ -8,6 +8,8 @@ import BuyerDashboard from './features/users/pages/BuyerDashboard';
 import Profile from './features/users/pages/Profile';
 import GemDetails from './features/gems/pages/GemDetails';
 import AdminDashboard from './features/users/pages/AdminDashboard';
+import AuctionListPage from './features/auctions/pages/AuctionListPage';
+import LiveAuctionPage from './features/auctions/pages/LiveAuctionPage';
 
 function App() {
     return (
@@ -22,6 +24,9 @@ function App() {
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/gem/:id" element={<GemDetails />} />
                     <Route path="/admin-dashboard" element={<AdminDashboard />} />
+                    {/* ── Auction routes ── */}
+                    <Route path="/auctions" element={<AuctionListPage />} />
+                    <Route path="/auctions/:id" element={<LiveAuctionPage />} />
                 </Routes>
             </Router>
         </ThemeProvider>
