@@ -10,6 +10,7 @@ import GemDetails from './features/gems/pages/GemDetails';
 import AdminDashboard from './features/users/pages/AdminDashboard';
 import AuctionListPage from './features/auctions/pages/AuctionListPage';
 import LiveAuctionPage from './features/auctions/pages/LiveAuctionPage';
+import AIPredictorPage from './features/gems/pages/AIPredictor';
 
 function App() {
     return (
@@ -27,6 +28,8 @@ function App() {
                     {/* ── Auction routes ── */}
                     <Route path="/auctions" element={<AuctionListPage />} />
                     <Route path="/auctions/:id" element={<LiveAuctionPage />} />
+                    {/* ── AI Predictor ── */}
+                    <Route path="/ai-predictor" element={<AIPredictorPage />} />
                 </Routes>
             </Router>
         </ThemeProvider>

@@ -9,6 +9,7 @@ const Navbar = () => {
     const navigate  = useNavigate();
     const location  = useLocation();
     const onAuctions = location.pathname.startsWith('/auctions');
+    const onAIPredictor = location.pathname === '/ai-predictor';
 
     useEffect(() => {
         const handleScroll = () => setIsScrolled(window.scrollY > 10);
@@ -87,6 +88,34 @@ const Navbar = () => {
                         >
                             <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 5px #10b981', flexShrink: 0 }} />
                             Auctions
+                        </Link>
+                        {/* ── AI Predictor link ── */}
+                        <Link
+                            to="/ai-predictor"
+                            style={{
+                                color:          onAIPredictor ? '#f59e0b' : (isDark ? '#94a3b8' : '#374151'),
+                                textDecoration: 'none',
+                                fontSize:       '0.875rem',
+                                fontWeight:     onAIPredictor ? 700 : 500,
+                                padding:        '7px 14px',
+                                borderRadius:   '8px',
+                                background:     onAIPredictor ? 'rgba(245,158,11,0.12)' : 'transparent',
+                                border:         onAIPredictor ? '1px solid rgba(245,158,11,0.25)' : '1px solid transparent',
+                                transition:     'all 0.2s',
+                                display:        'flex',
+                                alignItems:     'center',
+                                gap:            6,
+                            }}
+                            onMouseEnter={e => {
+                                e.currentTarget.style.color = '#f59e0b';
+                                e.currentTarget.style.background = 'rgba(245,158,11,0.1)';
+                            }}
+                            onMouseLeave={e => {
+                                e.currentTarget.style.color = onAIPredictor ? '#f59e0b' : (isDark ? '#94a3b8' : '#374151');
+                                e.currentTarget.style.background = onAIPredictor ? 'rgba(245,158,11,0.12)' : 'transparent';
+                            }}
+                        >
+                            🧠 AI Predictor
                         </Link>
                     </nav>
 
