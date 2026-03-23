@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
-import LandingPage from './shared/components/LandingPage';
+import ScrollLandingPage from './shared/components/ScrollLandingPage';
 import Signup from './features/users/pages/Signup';
 import Login from './features/users/pages/Login';
 import SellerDashboard from './features/users/pages/SellerDashboard';
@@ -17,7 +17,7 @@ function App() {
         <ThemeProvider>
             <Router>
                 <Routes>
-                    <Route path="/" element={<LandingPage />} />
+                    <Route path="/" element={<ScrollLandingPage />} />
                     <Route path="/signup" element={<Signup />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/seller-dashboard" element={<SellerDashboard />} />
