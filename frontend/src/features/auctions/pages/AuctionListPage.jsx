@@ -1,39 +1,54 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import Navbar from '../../../shared/components/Navbar';
+import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import AuctionCard from '../components/AuctionCard';
 import { getAuctions } from '../services/auctionsService';
 
 const C = {
-    bg:      '#0a0d14',
-    panel:   '#0f1220',
-    gold:    '#f59e0b',
-    goldDim: 'rgba(245,158,11,0.15)',
-    text:    '#f1f5f9',
-    muted:   '#94a3b8',
-    dim:     '#475569',
-    border:  'rgba(255,255,255,0.08)',
+    bg:         '#F0EDE8',
+    white:      '#FFFFFF',
+    sapphire:   '#1A4D8C',
+    sapphireBg: 'rgba(26,77,140,0.06)',
+    gold:       '#C4892A',
+    goldSoft:   'rgba(196,137,42,0.10)',
+    text:       '#1A1A2E',
+    muted:      '#6B6B7B',
+    faint:      '#9A9AAB',
+    border:     '#E0DCD6',
+    green:      '#16a34a',
+    red:        '#b91c1c',
 };
+const SERIF   = "'Cormorant Garamond', 'Georgia', serif";
+const DISPLAY = "'Cinzel', serif";
+const BODY    = "'Jost', 'Inter', sans-serif";
 
 const STATUS_TABS = [
-    { label: 'All',          value: 'all'        },
-    { label: '🟢 Live',      value: 'active'     },
-    { label: '✅ Completed', value: 'completed'  },
-    { label: '❌ Cancelled', value: 'cancelled'  },
+    { label: 'All',       value: 'all' },
+    { label: 'Live',      value: 'active' },
+    { label: 'Upcoming',  value: 'upcoming' },
+    { label: 'Ended',     value: 'completed' },
+    { label: 'Cancelled', value: 'cancelled' },
 ];
 
 const SORT_OPTIONS = [
-    { label: 'Ending Soon',     sort: 'end_time',      order: 'asc'  },
-    { label: 'Newest First',    sort: 'created_at',    order: 'desc' },
-    { label: 'Price: Low→High', sort: 'current_price', order: 'asc'  },
-    { label: 'Price: High→Low', sort: 'current_price', order: 'desc' },
-    { label: 'Most Bids',       sort: 'bid_count',     order: 'desc' },
+    { label: 'Ending Soon',   sort: 'end_time',      order: 'asc'  },
+    { label: 'Newest First',  sort: 'created_at',    order: 'desc' },
+    { label: 'Lowest Price',  sort: 'current_price', order: 'asc'  },
+    { label: 'Highest Price', sort: 'current_price', order: 'desc' },
+    { label: 'Most Bids',     sort: 'bid_count',     order: 'desc' },
 ];
 
-const AuctionListPage = () => {
-    const navigate = useNavigate();
+const GemIconSvg = ({ size = 64, color = C.sapphire }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 3h12l4 6-10 13L2 9z" />
+        <path d="M11 3l1 10" />
+        <path d="M2 9h20" />
+        <path d="M6.5 3L12 13" />
+        <path d="M17.5 3L12 13" />
+    </svg>
+);
 
+const AuctionListPage = () => {
     const [auctions,  setAuctions]  = useState([]);
     const [loading,   setLoading]   = useState(true);
     const [error,     setError]     = useState(null);
@@ -51,14 +66,19 @@ const AuctionListPage = () => {
         setError(null);
         try {
             const { sort, order } = SORT_OPTIONS[sortIdx];
-            const res = await getAuctions({
-                status,
+            const params = {
                 search: search || undefined,
                 page,
                 limit: LIMIT,
                 sort,
                 order,
-            });
+            };
+            if (status === 'upcoming') {
+                params.upcoming = true;
+            } else if (status !== 'all') {
+                params.status = status;
+            }
+            const res = await getAuctions(params);
             setAuctions(res.data || []);
             setTotalPages(res.pagination?.totalPages || 1);
             setTotal(res.pagination?.total || 0);
@@ -69,15 +89,9 @@ const AuctionListPage = () => {
         }
     }, [status, search, page, sortIdx]);
 
-    useEffect(() => {
-        setPage(1);
-    }, [status, search, sortIdx]);
+    useEffect(() => { setPage(1); }, [status, search, sortIdx]);
+    useEffect(() => { fetchAuctions(); }, [fetchAuctions]);
 
-    useEffect(() => {
-        fetchAuctions();
-    }, [fetchAuctions]);
-
-    // Debounced search
     const [searchInput, setSearchInput] = useState('');
     useEffect(() => {
         const t = setTimeout(() => setSearch(searchInput), 400);
@@ -85,62 +99,41 @@ const AuctionListPage = () => {
     }, [searchInput]);
 
     return (
-        <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: 'Inter, sans-serif' }}>
-            {/* Aurora background */}
-            <div style={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-                {[
-                    { color: 'rgba(99,102,241,0.12)',  top: '10%',  left: '10%',  w: 500, h: 500 },
-                    { color: 'rgba(168,85,247,0.09)',  top: '50%',  right: '5%',  w: 400, h: 400 },
-                    { color: 'rgba(245,158,11,0.07)',  bottom: '5%',left: '30%',  w: 600, h: 300 },
-                ].map((orb, i) => (
-                    <div key={i} style={{
-                        position:     'absolute', top: orb.top, left: orb.left, right: orb.right, bottom: orb.bottom,
-                        width:        orb.w, height: orb.h,
-                        background:   orb.color,
-                        borderRadius: '50%',
-                        filter:       'blur(80px)',
-                    }} />
-                ))}
-            </div>
+        <div style={{ minHeight: '100vh', background: C.bg, fontFamily: BODY }}>
+            <div style={{ maxWidth: 1280, margin: '0 auto', padding: '90px 24px 60px' }}>
 
-            <Navbar />
-
-            <div style={{ maxWidth: 1280, margin: '0 auto', padding: '100px 24px 60px', position: 'relative', zIndex: 1 }}>
-
-                {/* Page header */}
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{ marginBottom: 36 }}
-                >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16 }}>
-                        <div>
-                            <h1 style={{ fontSize: '2rem', fontWeight: 900, margin: 0, letterSpacing: '-0.03em' }}>
-                                Live <span style={{ color: C.gold }}>Auctions</span>
-                            </h1>
-                            <p style={{ color: C.muted, margin: '6px 0 0', fontSize: '0.9rem' }}>
-                                {loading ? 'Loading…' : `${total} auction${total !== 1 ? 's' : ''} found`}
-                            </p>
-                        </div>
-                    </div>
+                {/* Header */}
+                <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
+                    <h1 style={{ fontFamily: DISPLAY, fontSize: '2.2rem', fontWeight: 700, color: C.sapphire, margin: 0 }}>
+                        Gem Auctions
+                    </h1>
+                    <p style={{ fontFamily: BODY, color: C.muted, margin: '6px 0 0', fontSize: '0.9rem' }}>
+                        {loading ? 'Loading...' : `${total} auction${total !== 1 ? 's' : ''} found`}
+                    </p>
                 </motion.div>
 
-                {/* Filters row */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 28, alignItems: 'center' }}>
+                {/* Filter bar */}
+                <div style={{
+                    position: 'sticky', top: 0, zIndex: 10,
+                    background: C.white, borderBottom: `1px solid ${C.border}`,
+                    borderRadius: 12, padding: '12px 16px', marginBottom: 28,
+                    display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center',
+                }}>
                     {/* Status tabs */}
-                    <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 4 }}>
+                    <div style={{ display: 'flex', gap: 4 }}>
                         {STATUS_TABS.map((tab) => (
                             <button
                                 key={tab.value}
                                 onClick={() => setStatus(tab.value)}
                                 style={{
-                                    background:   status === tab.value ? C.goldDim : 'transparent',
-                                    border:       `1px solid ${status === tab.value ? 'rgba(245,158,11,0.35)' : 'transparent'}`,
-                                    borderRadius: 7,
-                                    color:        status === tab.value ? C.gold : C.muted,
-                                    fontSize:     '0.8rem',
+                                    background:   status === tab.value ? C.sapphire : 'transparent',
+                                    border:       'none',
+                                    borderRadius: 8,
+                                    color:        status === tab.value ? '#fff' : C.muted,
+                                    fontSize:     '0.82rem',
                                     fontWeight:   status === tab.value ? 700 : 500,
-                                    padding:      '6px 14px',
+                                    fontFamily:   BODY,
+                                    padding:      '7px 16px',
                                     cursor:       'pointer',
                                     transition:   'all 0.15s',
                                     whiteSpace:   'nowrap',
@@ -151,25 +144,20 @@ const AuctionListPage = () => {
 
                     {/* Search */}
                     <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-                        <svg
-                            style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}
-                            width="15" height="15" viewBox="0 0 24 24" fill="none"
-                            stroke={C.dim} strokeWidth="2.5" strokeLinecap="round"
-                        >
-                            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                        </svg>
+                        <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: C.faint }} />
                         <input
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
-                            placeholder="Search gems…"
+                            placeholder="Search by gem name..."
                             style={{
                                 width:        '100%',
-                                background:   'rgba(255,255,255,0.04)',
+                                background:   C.bg,
                                 border:       `1px solid ${C.border}`,
                                 borderRadius: 10,
                                 color:        C.text,
                                 fontSize:     '0.87rem',
-                                padding:      '10px 14px 10px 36px',
+                                fontFamily:   BODY,
+                                padding:      '9px 14px 9px 36px',
                                 outline:      'none',
                                 boxSizing:    'border-box',
                             }}
@@ -181,12 +169,13 @@ const AuctionListPage = () => {
                         value={sortIdx}
                         onChange={(e) => setSortIdx(Number(e.target.value))}
                         style={{
-                            background:   'rgba(255,255,255,0.04)',
+                            background:   C.bg,
                             border:       `1px solid ${C.border}`,
                             borderRadius: 10,
                             color:        C.text,
                             fontSize:     '0.83rem',
-                            padding:      '10px 14px',
+                            fontFamily:   BODY,
+                            padding:      '9px 14px',
                             outline:      'none',
                             cursor:       'pointer',
                         }}
@@ -203,38 +192,34 @@ const AuctionListPage = () => {
                         {Array.from({ length: 6 }).map((_, i) => (
                             <div key={i} style={{
                                 height: 380, borderRadius: 14,
-                                background: 'rgba(255,255,255,0.04)',
-                                animation: 'pulse 1.5s ease-in-out infinite',
+                                background: C.white, border: `1px solid ${C.border}`,
+                                animation: 'auctionPulse 1.5s ease-in-out infinite',
                             }} />
                         ))}
                     </div>
                 ) : error ? (
-                    <div style={{
-                        textAlign: 'center', padding: '60px 20px',
-                        color: '#ef4444', fontSize: '0.9rem',
-                    }}>
-                        ⚠ {error}
-                        <br />
+                    <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                        <p style={{ color: C.red, fontSize: '0.9rem', fontFamily: BODY }}>{error}</p>
                         <button
                             onClick={fetchAuctions}
                             style={{
-                                marginTop: 16, background: C.goldDim,
-                                border: `1px solid rgba(245,158,11,0.3)`,
+                                marginTop: 16, background: C.goldSoft,
+                                border: `1px solid ${C.gold}`,
                                 borderRadius: 8, color: C.gold,
-                                padding: '8px 20px', cursor: 'pointer', fontSize: '0.85rem',
+                                padding: '8px 20px', cursor: 'pointer',
+                                fontSize: '0.85rem', fontFamily: BODY, fontWeight: 600,
                             }}
                         >Retry</button>
                     </div>
                 ) : auctions.length === 0 ? (
-                    <div style={{
-                        textAlign: 'center', padding: '80px 20px',
-                        color: C.dim, fontSize: '0.95rem',
-                    }}>
-                        <div style={{ fontSize: '3rem', marginBottom: 16 }}>💎</div>
-                        <div>No auctions found.</div>
-                        <div style={{ fontSize: '0.82rem', marginTop: 8, color: C.dim }}>
+                    <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+                        <GemIconSvg size={64} color={C.faint} />
+                        <p style={{ fontFamily: DISPLAY, color: C.muted, fontSize: '1rem', margin: '16px 0 4px' }}>
+                            No auctions found.
+                        </p>
+                        <p style={{ fontFamily: BODY, color: C.faint, fontSize: '0.82rem', margin: 0 }}>
                             Try a different filter or check back soon.
-                        </div>
+                        </p>
                     </div>
                 ) : (
                     <motion.div
@@ -247,7 +232,7 @@ const AuctionListPage = () => {
                                 key={auction.id}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.05 }}
+                                transition={{ delay: i * 0.04 }}
                             >
                                 <AuctionCard auction={auction} />
                             </motion.div>
@@ -257,34 +242,33 @@ const AuctionListPage = () => {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 36 }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 36, alignItems: 'center' }}>
                         <button
                             disabled={page <= 1}
                             onClick={() => setPage((p) => p - 1)}
                             style={{
-                                background:   page <= 1 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.06)',
-                                border:       `1px solid ${C.border}`,
-                                borderRadius: 8,
-                                color:        page <= 1 ? C.dim : C.text,
-                                padding:      '8px 16px', cursor: page <= 1 ? 'not-allowed' : 'pointer',
-                                fontSize:     '0.85rem',
+                                display: 'flex', alignItems: 'center', gap: 4,
+                                background: C.white, border: `1px solid ${C.border}`,
+                                borderRadius: 8, color: page <= 1 ? C.faint : C.text,
+                                padding: '8px 14px', cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                                fontSize: '0.85rem', fontFamily: BODY, opacity: page <= 1 ? 0.5 : 1,
                             }}
-                        >← Prev</button>
+                        ><ChevronLeft size={14} /> Prev</button>
 
-                        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                        {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
                             const p = i + 1;
                             return (
                                 <button
                                     key={p}
                                     onClick={() => setPage(p)}
                                     style={{
-                                        background:   page === p ? C.goldDim : 'rgba(255,255,255,0.04)',
-                                        border:       `1px solid ${page === p ? 'rgba(245,158,11,0.4)' : C.border}`,
+                                        background:   page === p ? C.sapphire : C.white,
+                                        border:       `1px solid ${page === p ? C.sapphire : C.border}`,
                                         borderRadius: 8,
-                                        color:        page === p ? C.gold : C.muted,
+                                        color:        page === p ? '#fff' : C.muted,
                                         fontWeight:   page === p ? 700 : 500,
                                         padding:      '8px 12px', cursor: 'pointer',
-                                        fontSize:     '0.85rem', minWidth: 36,
+                                        fontSize:     '0.85rem', fontFamily: BODY, minWidth: 36,
                                     }}
                                 >{p}</button>
                             );
@@ -294,20 +278,19 @@ const AuctionListPage = () => {
                             disabled={page >= totalPages}
                             onClick={() => setPage((p) => p + 1)}
                             style={{
-                                background:   page >= totalPages ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.06)',
-                                border:       `1px solid ${C.border}`,
-                                borderRadius: 8,
-                                color:        page >= totalPages ? C.dim : C.text,
-                                padding:      '8px 16px', cursor: page >= totalPages ? 'not-allowed' : 'pointer',
-                                fontSize:     '0.85rem',
+                                display: 'flex', alignItems: 'center', gap: 4,
+                                background: C.white, border: `1px solid ${C.border}`,
+                                borderRadius: 8, color: page >= totalPages ? C.faint : C.text,
+                                padding: '8px 14px', cursor: page >= totalPages ? 'not-allowed' : 'pointer',
+                                fontSize: '0.85rem', fontFamily: BODY, opacity: page >= totalPages ? 0.5 : 1,
                             }}
-                        >Next →</button>
+                        >Next <ChevronRight size={14} /></button>
                     </div>
                 )}
             </div>
 
             <style>{`
-                @keyframes pulse {
+                @keyframes auctionPulse {
                     0%, 100% { opacity: 0.5; }
                     50%       { opacity: 1;   }
                 }

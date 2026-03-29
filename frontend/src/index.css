@@ -33,7 +33,7 @@ html {
 
 body {
     font-family: 'Jost', sans-serif;
-    background-color: var(--bg-primary);
+    background-color: transparent;
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;

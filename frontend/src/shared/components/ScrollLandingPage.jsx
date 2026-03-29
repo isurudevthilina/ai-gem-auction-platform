@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, Suspense, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import Navbar from './Navbar';
+import Footer from './Footer';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useGLTF, MeshTransmissionMaterial, Environment, ContactShadows, PerspectiveCamera } from '@react-three/drei';
 import { EffectComposer, Bloom, ChromaticAberration } from '@react-three/postprocessing';
@@ -201,7 +203,7 @@ function FixedCanvas({ scrollProgress }) {
                     {/* Backdrop — matches page bg so FBO refraction looks natural */}
                     <mesh position={[0, 0, -5]}>
                         <planeGeometry args={[80, 80]} />
-                        <meshBasicMaterial color="#F0EDE8" />
+                        <meshBasicMaterial color="#E8EDF8" />
                     </mesh>
                     <SapphireModel scrollProgress={scrollProgress} mouse={mouse} />
                     <Environment preset="warehouse" />
@@ -276,7 +278,7 @@ function MinimalNav() {
             position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
             padding: '20px 40px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'rgba(240, 237, 232, 0.75)',
+            background: 'rgba(238, 233, 244, 0.72)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
             borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
@@ -298,6 +300,7 @@ function MinimalNav() {
                 {[
                     { to: '/auctions', label: 'Live Auctions' },
                     { to: '/auctions', label: 'The Vault' },
+                    { to: '/gems', label: 'Discover Gems' },
                     { to: '/ai-predictor', label: 'AI Valuation' },
                     { to: '/login', label: 'Sign In' },
                 ].map(({ to, label }) => (
@@ -969,6 +972,9 @@ export default function ScrollLandingPage() {
     const springY = useSpring(mouseY, { stiffness: 40, damping: 18 });
     const bgX = useTransform(springX, [-0.5, 0.5], [-80, 80]);
     const bgY = useTransform(springY, [-0.5, 0.5], [-80, 80]);
+    /* Gem pattern moves at a different (slower) speed for depth parallax */
+    const patternX = useTransform(springX, [-0.5, 0.5], [-30, 30]);
+    const patternY = useTransform(springY, [-0.5, 0.5], [-30, 30]);
     const midX = useTransform(springX, [-0.5, 0.5], [-30, 30]);
     const midY = useTransform(springY, [-0.5, 0.5], [-30, 30]);
     const fgX = useTransform(springX, [-0.5, 0.5], [-12, 12]);
@@ -992,7 +998,7 @@ export default function ScrollLandingPage() {
             '--accent-sapphire': '#2E6DB4',
             '--border-subtle': 'rgba(212, 175, 55, 0.2)',
             '--bg-primary': '#F0EDE8',
-            background: '#F0EDE8',
+            background: 'transparent',
             minHeight: '100vh',
             position: 'relative',
             color: '#1E293B',
@@ -1001,43 +1007,68 @@ export default function ScrollLandingPage() {
             <AnimatePresence>
                 {!loaded && <LoadingScreen onDone={handleLoaded} />}
             </AnimatePresence>
-            {/* Pure CSS mouse-parallax luxury background */}
+            {/* Base gradient background */}
+            <div style={{
+                position: 'fixed', inset: 0, zIndex: 0,
+                pointerEvents: 'none',
+                background: 'linear-gradient(155deg, #E6ECF8 0%, #EEF1FA 28%, #F6F2EC 52%, #E8ECF7 76%, #DDE6F6 100%)',
+            }} />
+
+            {/* Soft atmospheric colour wash */}
             <motion.div style={{
                 position: 'fixed',
                 inset: '-100px',
-                zIndex: 0,
+                zIndex: 1,
                 pointerEvents: 'none',
                 x: bgX,
                 y: bgY,
-                background: '#F0EDE8',
-                backgroundImage: `radial-gradient(at 50% 50%, rgba(212, 175, 55, 0.18) 0px, transparent 55%), radial-gradient(at 80% 20%, rgba(98, 155, 250, 0.14) 0px, transparent 50%), radial-gradient(at 20% 80%, rgba(212, 175, 55, 0.10) 0px, transparent 45%), linear-gradient(rgba(30,41,80,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(30,41,80,0.12) 1px, transparent 1px)`,
-                backgroundSize: '100% 100%, 100% 100%, 100% 100%, 48px 48px, 48px 48px',
-
+                backgroundImage: [
+                    'radial-gradient(ellipse 68% 52% at 10% 8%, rgba(98,155,250,0.18) 0%, transparent 65%)',
+                    'radial-gradient(ellipse 52% 38% at 88% 10%, rgba(212,175,55,0.14) 0%, transparent 58%)',
+                    'radial-gradient(ellipse 62% 50% at 50% 45%, rgba(255,252,245,0.38) 0%, transparent 65%)',
+                    'radial-gradient(ellipse 54% 44% at 94% 88%, rgba(8,18,58,0.16) 0%, transparent 58%)',
+                    'radial-gradient(ellipse 54% 44% at 6% 92%, rgba(26,77,140,0.18) 0%, transparent 62%)',
+                ].join(', '),
             }} />
 
-            {/* Blurred dot grid pattern — bigger dots, soft like runway text */}
-            <div style={{
+            {/* Repeating gem pattern — same ghosted role as runway text, behind it but above canvas */}
+            <motion.div style={{
                 position: 'fixed',
-                inset: '-60px',
-                zIndex: 0,
+                inset: '-120px',
+                zIndex: 5,
                 pointerEvents: 'none',
-                filter: 'blur(3px)',
-                opacity: 0.35,
-                backgroundImage: 'radial-gradient(circle, rgba(26,77,140,0.35) 2.5px, transparent 2.5px)',
-                backgroundSize: '40px 40px',
-                backgroundPosition: '0 0',
+                x: patternX,
+                y: patternY,
+                backgroundImage: 'linear-gradient(135deg, rgba(48,78,126,0.34) 0%, rgba(212,175,55,0.30) 52%, rgba(70,104,160,0.28) 100%)',
+                WebkitMaskImage: 'url(/images/gem-pattern.png)',
+                maskImage: 'url(/images/gem-pattern.png)',
+                WebkitMaskRepeat: 'repeat',
+                maskRepeat: 'repeat',
+                WebkitMaskPosition: 'center center',
+                maskPosition: 'center center',
+                WebkitMaskSize: '760px 760px',
+                maskSize: '760px 760px',
+                WebkitMaskMode: 'luminance',
+                maskMode: 'luminance',
+                filter: 'blur(8px)',
+                opacity: 0.24,
             }} />
 
-            {/* Vignette layer — darkens edges for Noomo-style depth */}
+            {/* Edge vignette — frames the page like a jewel case */}
             <div style={{
-                position: 'fixed', inset: 0, zIndex: 1,
+                position: 'fixed', inset: 0, zIndex: 7,
                 pointerEvents: 'none',
-                background: 'radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.09) 100%)',
+                background: [
+                    'radial-gradient(ellipse 100% 60% at 50% 0%, rgba(8,18,58,0.12) 0%, transparent 70%)',
+                    'radial-gradient(ellipse 100% 50% at 50% 100%, rgba(8,18,58,0.15) 0%, transparent 70%)',
+                    'radial-gradient(ellipse 28% 100% at 0% 50%, rgba(8,18,58,0.07) 0%, transparent 70%)',
+                    'radial-gradient(ellipse 28% 100% at 100% 50%, rgba(8,18,58,0.07) 0%, transparent 70%)',
+                ].join(', '),
             }} />
 
             {/* Film grain noise overlay — sits between bg and content, not on gem/cards */}
             <div style={{
-                position: 'fixed', inset: 0, zIndex: 2,
+                position: 'fixed', inset: 0, zIndex: 8,
                 pointerEvents: 'none',
                 opacity: 0.035,
                 mixBlendMode: 'multiply',
@@ -1114,8 +1145,8 @@ export default function ScrollLandingPage() {
                 pointerEvents: 'none',
             }} />
 
-            {/* Nav */}
-            <MinimalNav />
+            {/* Shared Navbar */}
+            <Navbar />
 
             {/* Dot nav */}
             <DotNav activeSection={activeSection} />
@@ -1126,8 +1157,10 @@ export default function ScrollLandingPage() {
             {/* Scrollable spacer — creates the scroll height (3 viewports) */}
             <div style={{ height: '300vh', position: 'relative', zIndex: 0, pointerEvents: 'none' }} />
 
-            {/* Footer */}
-            <MinimalFooter />
+            {/* Shared Footer */}
+            <div style={{ position: 'relative', zIndex: 10 }}>
+                <Footer />
+            </div>
 
             {/* Keyframes */}
             <style>{`

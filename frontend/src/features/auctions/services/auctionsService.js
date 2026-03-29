@@ -4,16 +4,11 @@
  * Talks to the Express backend at /api/auctions
  */
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
-// ── Helper: auth token from Supabase session ──────────────────────────────
+// ── Helper: auth token ───────────────────────────────────────────────────
 const getAuthHeaders = () => {
-    // Supabase stores session in localStorage
-    const raw = localStorage.getItem(
-        `sb-${import.meta.env.VITE_SUPABASE_URL?.split('//')[1]?.split('.')[0]}-auth-token`
-    );
-    const session = raw ? JSON.parse(raw) : null;
-    const token = session?.access_token;
+    const token = localStorage.getItem('gembid_token');
     return token
         ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
         : { 'Content-Type': 'application/json' };
@@ -84,3 +79,18 @@ export const placeBid = (auctionId, amount) =>
 // ─────────────────────────────────────────────────────────────────────────────
 export const getBids = (auctionId, page = 1, limit = 20) =>
     apiFetch(`/api/auctions/${auctionId}/bids?page=${page}&limit=${limit}`);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PERSONAL BID HISTORY
+// ─────────────────────────────────────────────────────────────────────────────
+export const getMyBidHistory = (filters = {}) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) =>
+        v !== undefined && v !== '' && params.set(k, v));
+    return apiFetch(`/api/bids/my-history?${params.toString()}`);
+};
+
+export const getMyBidStats = () => apiFetch('/api/bids/my-stats');
+
+export const getMyAuctionBids = (auctionId) =>
+    apiFetch(`/api/bids/${auctionId}/my-bids`);

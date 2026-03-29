@@ -1,243 +1,327 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import AuthLayout from '../../../shared/components/AuthLayout';
-import { useTheme } from '../../../context/ThemeContext';
-import { supabase } from '../../../config/supabase';
+import authService from '../../auth/services/authService';
+
+const SL_PROVINCES = [
+    'Western Province', 'Central Province', 'Southern Province',
+    'Northern Province', 'Eastern Province', 'North Western Province',
+    'North Central Province', 'Uva Province', 'Sabaragamuwa Province',
+];
+
+const SL_DISTRICTS = [
+    'Colombo', 'Gampaha', 'Kalutara', 'Kandy', 'Matale', 'Nuwara Eliya',
+    'Galle', 'Matara', 'Hambantota', 'Jaffna', 'Kilinochchi', 'Mannar',
+    'Mullaitivu', 'Vavuniya', 'Batticaloa', 'Ampara', 'Trincomalee',
+    'Kurunegala', 'Puttalam', 'Anuradhapura', 'Polonnaruwa',
+    'Badulla', 'Monaragala', 'Ratnapura', 'Kegalle',
+];
+
+const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/;
+const slPhoneRegex = /^(\+94|0)[0-9]{9}$/;
+const nicRegex = /^([0-9]{9}[vVxX]|[0-9]{12})$/;
+
+const signupSchema = z.object({
+    role: z.enum(['buyer', 'seller']),
+    full_name: z.string().min(2, 'Name must be at least 2 characters'),
+    email: z.string().min(1, 'Email is required').email('Invalid email address'),
+    phone_number: z.string().optional().refine(
+        (v) => !v || slPhoneRegex.test(v),
+        'Invalid Sri Lankan phone number',
+    ),
+    district: z.string().min(1, 'Please select your district'),
+    province: z.string().min(1, 'Please select your province'),
+    password: z.string()
+        .min(8, 'Password must be at least 8 characters')
+        .regex(passwordRegex, 'Must include uppercase, lowercase, number, and special character'),
+    confirm: z.string().min(1, 'Please confirm your password'),
+    nic_number: z.string().optional(),
+    business_name: z.string().optional(),
+    business_registration_number: z.string().optional(),
+    business_address: z.string().optional(),
+}).refine((data) => data.password === data.confirm, {
+    message: 'Passwords do not match',
+    path: ['confirm'],
+}).refine((data) => data.role !== 'seller' || (data.nic_number && nicRegex.test(data.nic_number)), {
+    message: 'Valid NIC number is required for sellers',
+    path: ['nic_number'],
+}).refine((data) => data.role !== 'seller' || !!data.business_registration_number, {
+    message: 'Business registration number is required for sellers',
+    path: ['business_registration_number'],
+});
+
+const fieldStyle = (isFocused, hasError) => ({
+    width: '100%', padding: '11px 14px',
+    background: isFocused ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.6)',
+    border: `1.5px solid ${hasError ? '#dc2626' : isFocused ? '#D4AF37' : 'rgba(26,35,64,0.14)'}`,
+    borderRadius: '10px', fontSize: '0.92rem', color: '#1a2340',
+    outline: 'none', transition: 'all 0.22s', boxSizing: 'border-box',
+    boxShadow: hasError ? '0 0 0 3px rgba(220,38,38,0.10)' : isFocused ? '0 0 0 3px rgba(212,175,55,0.14)' : 'none',
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
+});
+
+const labelStyle = {
+    display: 'block', fontFamily: "'Cinzel', serif",
+    fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em',
+    textTransform: 'uppercase', color: '#374151', marginBottom: '6px',
+};
+
+const Field = ({ label, children }) => (
+    <div style={{ marginBottom: '16px' }}>
+        <label style={labelStyle}>{label}</label>
+        {children}
+    </div>
+);
 
 const Signup = () => {
     const navigate = useNavigate();
-    const { isDark } = useTheme();
-    const [role, setRole] = useState('buyer');
-    const [focusedField, setFocusedField] = useState(null);
-    const [fullName,  setFullName]  = useState('');
-    const [email,     setEmail]     = useState('');
-    const [password,  setPassword]  = useState('');
-    const [confirm,   setConfirm]   = useState('');
-    const [loading,   setLoading]   = useState(false);
-    const [error,     setError]     = useState(null);
+    const location = useLocation();
+    const from = location.state?.from ?? null;
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const [focused, setFocused] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error,   setError]   = useState(null);
+
+    const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
+        resolver: zodResolver(signupSchema),
+        defaultValues: {
+            role: 'buyer', full_name: '', email: '', phone_number: '',
+            district: '', province: '', password: '', confirm: '',
+            nic_number: '', business_name: '', business_registration_number: '',
+            business_address: '',
+        },
+    });
+
+    const role = watch('role');
+    const password = watch('password');
+
+    // Password strength indicator
+    const getPasswordStrength = (pw) => {
+        if (!pw) return { level: 0, label: '', color: 'transparent' };
+        let score = 0;
+        if (pw.length >= 8) score++;
+        if (/[A-Z]/.test(pw)) score++;
+        if (/[a-z]/.test(pw)) score++;
+        if (/\d/.test(pw)) score++;
+        if (/[@$!%*?&]/.test(pw)) score++;
+        if (score <= 2) return { level: score, label: 'Weak', color: '#dc2626' };
+        if (score <= 3) return { level: score, label: 'Fair', color: '#f59e0b' };
+        if (score <= 4) return { level: score, label: 'Good', color: '#3b82f6' };
+        return { level: score, label: 'Strong', color: '#22c55e' };
+    };
+    const strength = getPasswordStrength(password);
+
+    const onSubmit = async (values) => {
         setError(null);
-        if (password !== confirm) return setError('Passwords do not match.');
-        if (password.length < 6)  return setError('Password must be at least 6 characters.');
         setLoading(true);
         try {
-            const { data, error: signUpErr } = await supabase.auth.signUp({
-                email,
-                password,
-                options: { data: { full_name: fullName, role } },
+            await authService.register({
+                email: values.email,
+                password: values.password,
+                full_name: values.full_name,
+                role: values.role,
+                phone_number: values.phone_number || undefined,
+                district: values.district,
+                province: values.province,
+                nic_number: values.role === 'seller' ? values.nic_number : undefined,
+                business_name: values.role === 'seller' ? (values.business_name || undefined) : undefined,
+                business_registration_number: values.role === 'seller' ? values.business_registration_number : undefined,
+                business_address: values.role === 'seller' ? (values.business_address || undefined) : undefined,
             });
-            if (signUpErr) throw signUpErr;
-            // Supabase may need email confirmation — navigate based on role
-            navigate(role === 'seller' ? '/seller-dashboard' : '/buyer-dashboard');
+
+            navigate('/login', {
+                replace: true,
+                state: { email: values.email, from },
+            });
         } catch (err) {
-            setError(err.message ?? 'Sign up failed. Please try again.');
+            const msg = err.response?.data?.message ?? err.message ?? 'Sign up failed. Please try again.';
+            setError(msg);
         } finally {
             setLoading(false);
         }
     };
 
-    const inputWrapperStyle = (isFocused) => ({
-        marginBottom: '24px',
-        background: isDark ? 'rgba(30, 41, 59, 0.5)' : '#ffffff',
-        border: `1.5px solid ${isFocused ? '#f59e0b' : (isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb')}`,
-        borderRadius: '12px',
-        padding: '8px 16px',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        position: 'relative',
-        boxShadow: isFocused ? '0 0 0 4px rgba(245, 158, 11, 0.1)' : 'none',
+    const f = (key) => ({
+        style: fieldStyle(focused === key, !!errors[key]),
+        onFocus: () => setFocused(key),
+        onBlur:  () => setFocused(null),
     });
 
-    const labelStyle = {
-        fontSize: '0.85rem',
-        color: isDark ? '#f1f5f9' : '#1e293b',
-        fontWeight: 700,
-        marginBottom: '10px',
-        display: 'block',
-        textAlign: 'center',
-        letterSpacing: '0.025em'
-    };
-
-    const inputStyle = {
-        width: '100%',
-        padding: '12px 0',
-        background: 'transparent',
-        border: 'none',
-        outline: 'none',
-        fontSize: '0.95rem',
-        color: isDark ? '#f1f5f9' : '#1e1b4b',
-        fontWeight: 500,
-        textAlign: role === 'address' ? 'left' : 'center', // Address is a textarea
-    };
-
     return (
-        <AuthLayout
-            title="Create Account"
-            welcomeText="Join the GemBid Marketplace"
-            welcomeSub="Start your journey in the world's most trusted gemstone auction platform"
-        >
-            <form onSubmit={handleSubmit}>
+        <AuthLayout title="Create Account" subtitle="Join Sri Lanka's premier gemstone marketplace" maxWidth={520}>
+            <form onSubmit={handleSubmit(onSubmit)} noValidate>
 
-                {/* Role Switcher */}
-                <div style={{ marginBottom: '32px' }}>
-                    <label style={{ ...labelStyle, textAlign: 'center', marginBottom: '15px' }}>I want to...</label>
+                {/* Role selector */}
+                <div style={{ marginBottom: '24px' }}>
+                    <p style={{ ...labelStyle, marginBottom: '10px', textAlign: 'center' }}>I want to</p>
                     <div style={{ display: 'flex', gap: '12px' }}>
                         {[
-                            { id: 'buyer', label: 'Buy Gems', icon: '💎' },
-                            { id: 'seller', label: 'Sell Gems', icon: '🤝' }
-                        ].map((item) => (
-                            <div
-                                key={item.id}
-                                onClick={() => setRole(item.id)}
+                            { id: 'buyer',  label: 'Buy Gems'  },
+                            { id: 'seller', label: 'Sell Gems' },
+                        ].map(({ id, label }) => (
+                            <button key={id} type="button" onClick={() => setValue('role', id)}
                                 style={{
-                                    flex: 1,
-                                    padding: '14px',
-                                    borderRadius: '10px',
-                                    background: role === item.id
-                                        ? (isDark ? 'rgba(245, 158, 11, 0.1)' : '#fffbeb')
-                                        : (isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc'),
-                                    border: `2px solid ${role === item.id ? '#f59e0b' : (isDark ? 'rgba(255,255,255,0.05)' : '#e5e7eb')}`,
-                                    cursor: 'pointer',
-                                    textAlign: 'center',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    boxShadow: role === item.id ? '0 4px 15px rgba(245, 158, 11, 0.15)' : 'none'
-                                }}
-                            >
-                                <span style={{ fontSize: '1.4rem' }}>{item.icon}</span>
-                                <span style={{
-                                    fontSize: '0.8rem',
-                                    fontWeight: 800,
-                                    color: role === item.id ? '#f59e0b' : (isDark ? '#94a3b8' : '#64748b')
+                                    flex: 1, padding: '14px 10px', borderRadius: '12px',
+                                    background: role === id ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.5)',
+                                    border: `2px solid ${role === id ? '#D4AF37' : 'rgba(26,35,64,0.12)'}`,
+                                    cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
+                                    boxShadow: role === id ? '0 4px 14px rgba(212,175,55,0.18)' : 'none',
                                 }}>
-                                    {item.label}
-                                </span>
-                            </div>
+                                <div style={{ fontFamily: "'Cinzel', serif", fontSize: '0.7rem', fontWeight: 700,
+                                    letterSpacing: '0.08em', color: role === id ? '#B8942E' : '#4b5563' }}>
+                                    {label}
+                                </div>
+                            </button>
                         ))}
                     </div>
                 </div>
 
-                <div style={{ marginBottom: '24px' }}>
-                    <label style={labelStyle}>Full Name</label>
-                    <div style={inputWrapperStyle(focusedField === 'name')}>
-                        <input
-                            type="text"
-                            placeholder="Enter your full name"
-                            value={fullName}
-                            onChange={e => setFullName(e.target.value)}
-                            style={inputStyle}
-                            onFocus={() => setFocusedField('name')}
-                            onBlur={() => setFocusedField(null)}
-                            required
-                        />
+                {/* Common fields */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                        <Field label="Full Name">
+                            <input type="text" placeholder="Chamara Perera" autoComplete="name"
+                                {...register('full_name')} {...f('full_name')} />
+                            {errors.full_name && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.full_name.message}</p>}
+                        </Field>
                     </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                        <Field label="Email Address">
+                            <input type="email" placeholder="you@example.com" autoComplete="email"
+                                {...register('email')} {...f('email')} />
+                            {errors.email && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.email.message}</p>}
+                        </Field>
+                    </div>
+                    <Field label="Phone Number">
+                        <input type="tel" placeholder="07X XXXXXXX" autoComplete="tel"
+                            {...register('phone_number')} {...f('phone_number')} />
+                        {errors.phone_number && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.phone_number.message}</p>}
+                    </Field>
+                    <div />
+                    <Field label="District">
+                        <select {...register('district')}
+                            onFocus={() => setFocused('district')} onBlur={() => setFocused(null)}
+                            style={{ ...fieldStyle(focused === 'district', !!errors.district), appearance: 'none', cursor: 'pointer' }}>
+                            <option value="">Select District</option>
+                            {SL_DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                        {errors.district && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.district.message}</p>}
+                    </Field>
+                    <Field label="Province">
+                        <select {...register('province')}
+                            onFocus={() => setFocused('province')} onBlur={() => setFocused(null)}
+                            style={{ ...fieldStyle(focused === 'province', !!errors.province), appearance: 'none', cursor: 'pointer' }}>
+                            <option value="">Select Province</option>
+                            {SL_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                        {errors.province && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.province.message}</p>}
+                    </Field>
                 </div>
 
-                <div style={{ marginBottom: '24px' }}>
-                    <label style={labelStyle}>Email Address</label>
-                    <div style={inputWrapperStyle(focusedField === 'email')}>
-                        <input
-                            type="email"
-                            placeholder="Enter your email"
-                            value={email}
-                            onChange={e => setEmail(e.target.value)}
-                            style={inputStyle}
-                            onFocus={() => setFocusedField('email')}
-                            onBlur={() => setFocusedField(null)}
-                            required
-                        />
+                {/* Seller fields */}
+                {role === 'seller' && (
+                    <div style={{ marginTop: '4px', paddingTop: '16px', borderTop: '1px solid rgba(212,175,55,0.25)' }}>
+                        <p style={{ ...labelStyle, color: '#B8942E', marginBottom: '14px', textAlign: 'center', fontSize: '0.62rem' }}>
+                            Seller Identity &amp; Business Details
+                        </p>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
+                            <Field label="NIC Number">
+                                <input type="text" placeholder="XXXXXXXXXX0V"
+                                    {...register('nic_number')} {...f('nic_number')} />
+                                {errors.nic_number && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.nic_number.message}</p>}
+                            </Field>
+                            <Field label="Business Name">
+                                <input type="text" placeholder="Gem Traders (Pvt) Ltd"
+                                    {...register('business_name')} {...f('business_name')} />
+                            </Field>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <Field label="Business Registration No.">
+                                    <input type="text" placeholder="PV123456"
+                                        {...register('business_registration_number')} {...f('business_registration_number')} />
+                                    {errors.business_registration_number && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.business_registration_number.message}</p>}
+                                </Field>
+                            </div>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <Field label="Business Address">
+                                    <textarea placeholder="No. 12, Gem Street, Ratnapura" rows={2}
+                                        {...register('business_address')}
+                                        onFocus={() => setFocused('business_address')} onBlur={() => setFocused(null)}
+                                        style={{ ...fieldStyle(focused === 'business_address', false), resize: 'none', lineHeight: 1.5 }} />
+                                </Field>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
 
-                <div style={{ marginBottom: '24px' }}>
-                    <label style={labelStyle}>Password</label>
-                    <div style={inputWrapperStyle(focusedField === 'pass')}>
-                        <input
-                            type="password"
-                            placeholder="Create a password (min. 6 characters)"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            style={inputStyle}
-                            onFocus={() => setFocusedField('pass')}
-                            onBlur={() => setFocusedField(null)}
-                            required
-                        />
-                    </div>
-                </div>
-
-                <div style={{ marginBottom: '24px' }}>
-                    <label style={labelStyle}>Confirm Password</label>
-                    <div style={inputWrapperStyle(focusedField === 'confirmPass')}>
-                        <input
-                            type="password"
-                            placeholder="Re-enter your password"
-                            value={confirm}
-                            onChange={e => setConfirm(e.target.value)}
-                            style={inputStyle}
-                            onFocus={() => setFocusedField('confirmPass')}
-                            onBlur={() => setFocusedField(null)}
-                            required
-                        />
-                    </div>
-                </div>
-
-                <div style={{ marginBottom: '24px' }}>
-                    <label style={labelStyle}>Phone Number</label>
-                    <div style={inputWrapperStyle(focusedField === 'phone')}>
-                        <input
-                            type="tel"
-                            placeholder="Enter your phone number"
-                            style={inputStyle}
-                            onFocus={() => setFocusedField('phone')}
-                            onBlur={() => setFocusedField(null)}
-                        />
-                    </div>
+                {/* Password */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px', marginTop: '4px' }}>
+                    <Field label="Password">
+                        <input type="password" placeholder="Min. 8 characters" autoComplete="new-password"
+                            {...register('password')} {...f('password')} />
+                        {errors.password && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.password.message}</p>}
+                        {password && (
+                            <div style={{ marginTop: '6px' }}>
+                                <div style={{ display: 'flex', gap: '4px', marginBottom: '3px' }}>
+                                    {[1, 2, 3, 4, 5].map((i) => (
+                                        <div key={i} style={{
+                                            flex: 1, height: '3px', borderRadius: '2px',
+                                            background: i <= strength.level ? strength.color : 'rgba(26,35,64,0.12)',
+                                            transition: 'background 0.2s',
+                                        }} />
+                                    ))}
+                                </div>
+                                <p style={{ fontSize: '0.7rem', color: strength.color, margin: 0, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                                    {strength.label}
+                                </p>
+                            </div>
+                        )}
+                    </Field>
+                    <Field label="Confirm Password">
+                        <input type="password" placeholder="Re-enter password" autoComplete="new-password"
+                            {...register('confirm')} {...f('confirm')} />
+                        {errors.confirm && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.confirm.message}</p>}
+                    </Field>
                 </div>
 
                 {error && (
-                    <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: '0.82rem' }}>
+                    <div style={{
+                        marginBottom: '16px', padding: '11px 14px', borderRadius: '10px',
+                        background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.22)',
+                        color: '#dc2626', fontSize: '0.82rem',
+                        fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1.5,
+                    }}>
                         {error}
                     </div>
                 )}
-                <button type="submit" disabled={loading} style={{
-                    width: '100%',
-                    padding: '14px',
-                    background: 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)',
-                    color: '#0f172a',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '0.9rem',
-                    fontWeight: 800,
-                    letterSpacing: '1px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '10px',
-                    marginTop: '10px',
-                    marginBottom: '32px',
-                    boxShadow: '0 4px 20px rgba(245, 158, 11, 0.25)',
-                    transition: 'all 0.2s'
-                }}
-                    onMouseEnter={e => { if (!loading) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 25px rgba(245, 158, 11, 0.35)'; }}}
-                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(245, 158, 11, 0.25)'; }}
+
+                <button type="submit" disabled={loading}
+                    style={{
+                        width: '100%', padding: '13px',
+                        background: loading ? 'rgba(212,175,55,0.45)' : 'linear-gradient(135deg, #D4AF37 0%, #B8942E 100%)',
+                        color: '#1a2340', border: 'none', borderRadius: '10px',
+                        fontSize: '0.75rem', fontWeight: 700, fontFamily: "'Cinzel', serif",
+                        letterSpacing: '0.13em', textTransform: 'uppercase',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        marginTop: '4px', marginBottom: '20px',
+                        boxShadow: loading ? 'none' : '0 4px 18px rgba(212,175,55,0.28)',
+                        transition: 'all 0.22s',
+                    }}
+                    onMouseEnter={e => { if (!loading) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(212,175,55,0.38)'; } }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = loading ? 'none' : '0 4px 18px rgba(212,175,55,0.28)'; }}
                 >
-                    {loading ? 'Creating account…' : 'CONTINUE'}
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
-                    </svg>
+                    {loading ? 'Creating account…' : 'Create Account'}
                 </button>
 
-                <div style={{ textAlign: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', color: isDark ? '#94a3b8' : '#64748b', fontWeight: 500 }}>Already have an account? </span>
-                    <Link to="/login" style={{ fontSize: '0.85rem', color: '#f59e0b', fontWeight: 800, textDecoration: 'none' }}>
+                <p style={{ textAlign: 'center', fontSize: '0.83rem', color: '#6b7280', fontFamily: "'Plus Jakarta Sans', sans-serif", margin: 0 }}>
+                    Already have an account?{' '}
+                    <Link to="/login" state={from ? { from } : undefined}
+                        style={{ color: '#D4AF37', fontWeight: 700, textDecoration: 'none' }}>
                         Sign In
                     </Link>
-                </div>
+                </p>
             </form>
         </AuthLayout>
     );

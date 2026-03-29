@@ -368,32 +368,6 @@ client/
 └── package.json
 ```
 
-**Data Flow (Backend):**
-`Route → Auth Middleware → RBAC Middleware → Validation Middleware → Controller → Service → Repository → Supabase`
-
----
-
-## REST API Routes (Base: `/api/v1`)
-
-| Resource | Routes |
-|---|---|
-| **Auth** | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` |
-| **Users** | `GET /users`, `GET /users/:id`, `PATCH /users/:id` |
-| **Gems** | `GET /gems`, `GET /gems/:id`, `POST /gems`, `PATCH /gems/:id`, `DELETE /gems/:id` |
-| **Auctions** | `GET /auctions`, `GET /auctions/:id`, `POST /auctions`, `PATCH /auctions/:id`, `DELETE /auctions/:id` |
-| **Bids** | `GET /auctions/:id/bids`, `POST /auctions/:id/bids` |
-| **Transactions/Buy Now**| `POST /gems/:id/buy-now`, `GET /transactions` |
-| **Watchlist** | `GET /watchlist`, `POST /watchlist`, `DELETE /watchlist/:auctionId` |
-| **Watchlist Folders** | `GET /watchlist/folders`, `POST /watchlist/folders`, `DELETE /watchlist/folders/:id` |
-| **Reviews** | `GET /reviews`, `POST /reviews`, `PATCH /reviews/:id`, `DELETE /reviews/:id` |
-| **Certificates** | `GET /certificates`, `POST /certificates`, `PATCH /certificates/:id`, `DELETE /certificates/:id` |
-
----
-
-## Background Jobs (BullMQ + Redis)
-- **node-cron**: Triggers every minute for `end_time <= now()` to complete auctions.
-- **Queue Workers**: Handle dispatching outbid notification emails and "Auction Ending Soon" alerts via custom Redis queues.
-
 ---
 
 ## Getting Started

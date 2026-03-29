@@ -1,24 +1,20 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate } = require('../../middleware/auth.middleware');
+const validate = require('../../middleware/validate.middleware');
+const ctrl = require('./reviews.controller');
+const { createReviewSchema, updateReviewSchema } =
+  require('./reviews.validation');
 
-router.get('/', (req, res) => {
-    res.json({ success: true, message: 'Reviews Module working' });
-});
+// Public routes (no auth) — static paths first
+router.get('/seller/:sellerId', ctrl.getSellerReviews);
+router.get('/seller/:sellerId/summary', ctrl.getSellerRatingSummary);
 
-router.post('/', (req, res) => {
-    res.json({ success: true, message: 'Create review' });
-});
-
-router.get('/:id', (req, res) => {
-    res.json({ success: true, message: `Get review ${req.params.id}` });
-});
-
-router.patch('/:id', (req, res) => {
-    res.json({ success: true, message: `Patch review ${req.params.id}` });
-});
-
-router.delete('/:id', (req, res) => {
-    res.json({ success: true, message: `Delete review ${req.params.id}` });
-});
+// Auth-protected — static paths before parameterised
+router.post('/', authenticate, validate(createReviewSchema), ctrl.createReview);
+router.get('/my-reviews', authenticate, ctrl.getMyReviews);
+router.get('/check/:transactionId', authenticate, ctrl.checkCanReview);
+router.patch('/:id', authenticate, validate(updateReviewSchema), ctrl.updateReview);
+router.delete('/:id', authenticate, ctrl.deleteReview);
 
 module.exports = router;

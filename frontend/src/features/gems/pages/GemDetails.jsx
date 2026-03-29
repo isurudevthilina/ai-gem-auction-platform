@@ -1,248 +1,264 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Shield, Heart, Share2, Clock } from 'lucide-react';
-import GemScene from '../../../shared/components/GemScene';
+/**
+ * GemDetails.jsx — Gem detail page (/gems/:id)
+ * Fetches real data from API, supports model: prefix images, cream theme.
+ */
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { ChevronLeft, Shield, Share2, MapPin, Gem, Loader2 } from 'lucide-react';
+import AddToWatchlistButton from '../../watchlist/components/AddToWatchlistButton';
+import GemImageGallery from '../components/GemImageGallery';
+import BuyNowButton from '../../transactions/components/BuyNowButton';
+import RatingSummary from '../../reviews/components/RatingSummary';
+import apiClient from '../../../api/client';
 
-/* ─── colour tokens — mirrors landing page ─── */
-const C = {
-    bg: '#0a0d14',
-    panel: '#0f1220',
-    card: 'rgba(255,255,255,0.04)',
-    border: 'rgba(255,255,255,0.08)',
-    gold: '#f59e0b',
-    goldDim: 'rgba(245,158,11,0.15)',
-    green: '#10b981',
-    text: '#f1f5f9',
-    muted: '#94a3b8',
-    dim: '#475569',
+/* ─── Design tokens (cream theme) ─── */
+const T = {
+    bg:       '#F0EDE8',
+    white:    '#FFFFFF',
+    sapphire: '#1A4D8C',
+    sapphireBg: 'rgba(26,77,140,0.06)',
+    gold:     '#C4892A',
+    goldSoft: 'rgba(196,137,42,0.10)',
+    text:     '#1A1A2E',
+    muted:    '#6B6B7B',
+    faint:    '#9A9AAB',
+    border:   '#E0DCD6',
+    green:    '#16a34a',
 };
+const SERIF   = "'Cormorant Garamond', 'Georgia', serif";
+const DISPLAY = "'Cinzel', serif";
+const BODY    = "'Jost', 'Inter', sans-serif";
 
-const glassCard = {
-    background: 'rgba(13,17,28,0.85)',
-    border: `1px solid ${C.border}`,
-    borderRadius: '14px',
-    backdropFilter: 'blur(18px)',
-    padding: '30px'
+const specCard = {
+    background: T.white,
+    border: `0.5px solid ${T.border}`,
+    borderRadius: 14,
+    padding: '28px 32px',
 };
-
-/* ════════════════════════════════════════════════════
-   MOCK DATA STORE
-════════════════════════════════════════════════════ */
-// Usually, you would fetch this from an API based on the ID.
-const gems = [
-    { id: '1', name: 'Royal Blue Sapphire', carat: 2.5, bid: 12500, buyNow: 15000, status: 'Active', ends: '12h 30m', category: 'Sapphire', color: '#3b82f6', colorDesc: 'Royal Blue', clarity: 'VVS1', cut: 'Cushion', bids: 24 },
-    { id: '2', name: 'Pigeon Blood Ruby', carat: 1.8, bid: 28000, buyNow: 32000, status: 'Active', ends: '04h 15m', category: 'Ruby', color: '#ef4444', colorDesc: 'Pigeon Blood', clarity: 'IF', cut: 'Oval', bids: 32 },
-    { id: '3', name: 'Colombian Emerald', carat: 3.2, bid: 18500, buyNow: 22000, status: 'Active', ends: '1d 08h', category: 'Emerald', color: '#10b981', colorDesc: 'Muzo Green', clarity: 'VS2', cut: 'Emerald', bids: 8 },
-];
 
 const GemDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [gem, setGem] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    // Find the requested gem. If not found, default to sapphire.
-    const gem = gems.find(g => g.id === id) || gems[0];
+    useEffect(() => {
+        setLoading(true);
+        apiClient.get(`/gems/${id}`)
+            .then(res => setGem(res.data?.data || res.data))
+            .catch(err => setError(err.response?.data?.message || 'Gem not found'))
+            .finally(() => setLoading(false));
+    }, [id]);
 
-    const [activeImage, setActiveImage] = useState(0);
+    if (loading) {
+        return (
+            <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Loader2 size={32} color={T.sapphire} style={{ animation: 'spin 1s linear infinite' }} />
+            </div>
+        );
+    }
+    if (error || !gem) {
+        return (
+            <div style={{ minHeight: '100vh', background: T.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+                <Gem size={40} color={T.faint} />
+                <p style={{ fontFamily: BODY, fontSize: '1rem', color: T.muted }}>{error || 'Gem not found'}</p>
+                <button onClick={() => navigate('/gems')} style={{ fontFamily: BODY, fontSize: '0.85rem', color: T.sapphire, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                    Browse all gems
+                </button>
+            </div>
+        );
+    }
+
+    const specs = [
+        { label: 'Carat', value: gem.carat_weight ? `${gem.carat_weight} ct` : '—' },
+        { label: 'Color', value: gem.color || '—' },
+        { label: 'Clarity', value: gem.clarity || '—' },
+        { label: 'Cut / Shape', value: gem.cut || '—' },
+        { label: 'Treatment', value: gem.treatment || '—' },
+        { label: 'Origin', value: gem.origin || '—' },
+    ];
+
+    const categoryName = gem.category?.name || gem.gem_type || '';
+    const sellerName = gem.seller?.full_name || gem.seller?.email || 'Unknown seller';
 
     return (
-        <div style={{ minHeight: '100vh', background: C.bg, fontFamily: "'Inter','Segoe UI',sans-serif", color: C.text, padding: '40px 32px' }}>
-            <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ minHeight: '100vh', background: T.bg, fontFamily: BODY, color: T.text }}>
+            <div style={{ maxWidth: 1160, margin: '0 auto', padding: '32px 24px 80px' }}>
 
-                {/* ── Navbar Replace / Back Button ── */}
-                <div style={{ marginBottom: 30 }}>
-                    <button onClick={() => navigate(-1)} style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        background: 'transparent', border: 'none', color: C.muted,
-                        fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer',
-                        transition: 'color 0.2s'
-                    }}
-                        onMouseEnter={e => e.currentTarget.style.color = C.text}
-                        onMouseLeave={e => e.currentTarget.style.color = C.muted}
-                    >
-                        <ChevronLeft size={16} /> Back to Dashboard
-                    </button>
-                </div>
+                {/* Back button */}
+                <button onClick={() => navigate(-1)} style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    background: 'transparent', border: 'none', color: T.muted,
+                    fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', marginBottom: 24,
+                    fontFamily: BODY, transition: 'color 0.2s',
+                }}>
+                    <ChevronLeft size={16} /> Back
+                </button>
 
-                {/* ── Main Layout (Two Columns) ── */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(400px, 1fr) 450px', gap: 40, alignItems: 'start' }}>
+                {/* Two-column layout */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: 36, alignItems: 'start' }}>
 
-                    {/* LEFT COLUMN: Visuals */}
+                    {/* LEFT: Gallery */}
                     <div>
-                        {/* Main Image Area */}
-                        <div style={{
-                            ...glassCard,
-                            padding: 0, overflow: 'hidden', height: 450, position: 'relative',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: `radial-gradient(circle at center, rgba(59, 130, 246, 0.15) 0%, ${C.panel} 100%)`
-                        }}>
-                            {/* Certificate Badge overlay */}
-                            <div style={{
-                                position: 'absolute', top: 20, right: 20, zIndex: 10,
-                                display: 'flex', alignItems: 'center', gap: 6,
-                                background: C.green, color: '#fff',
-                                borderRadius: '8px', padding: '8px 14px',
-                                fontSize: '0.75rem', fontWeight: 700,
-                                boxShadow: '0 4px 15px rgba(16,185,129,0.3)'
-                            }}>
-                                <Shield size={14} /> GIA Certified
-                            </div>
-
-                            {/* Render actual 3D Scene or static image depending on viewer implementation */}
-                            {activeImage === 0 ? (
-                                <GemScene gemType={gem.category.toLowerCase()} />
-                            ) : (
-                                <div style={{ fontSize: '1.2rem', color: C.dim }}>
-                                    Static Image View
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Thumbnails */}
-                        <div style={{ display: 'flex', gap: 16, marginTop: 20 }}>
-                            {[1, 2, 3].map((_, idx) => (
-                                <button key={idx}
-                                    onClick={() => setActiveImage(idx)}
-                                    style={{
-                                        width: 80, height: 80, borderRadius: 12,
-                                        background: C.panel, padding: 0,
-                                        border: activeImage === idx ? `2px solid ${C.gold}` : `1px solid ${C.border}`,
-                                        opacity: activeImage === idx ? 1 : 0.6,
-                                        cursor: 'pointer', transition: 'all 0.2s',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: C.dim, fontSize: '0.75rem', fontWeight: 600
-                                    }}
-                                    onMouseEnter={e => {
-                                        if (activeImage !== idx) e.currentTarget.style.opacity = 0.8;
-                                    }}
-                                    onMouseLeave={e => {
-                                        if (activeImage !== idx) e.currentTarget.style.opacity = 0.6;
-                                    }}
-                                >
-                                    {idx === 0 ? '3D View' : `Thumbnail ${idx}`}
-                                </button>
-                            ))}
-                        </div>
+                        <GemImageGallery images={gem.images || []} />
                     </div>
 
-                    {/* RIGHT COLUMN: Details & Actions */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    {/* RIGHT: Details */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-                        {/* Title & Actions Block */}
-                        <div style={{ ...glassCard }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-                                <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-                                    {/* The user's screenshot highlights "Sapphire" in gold. Assuming last word gets highlighted. */}
-                                    {gem.name.split(' ').map((word, i, arr) => (
-                                        <span key={i} style={{ color: i === arr.length - 1 ? C.gold : '#ffffff', marginRight: 8 }}>
-                                            {word}
+                        {/* Title + Category + Actions */}
+                        <div style={specCard}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                                <div style={{ flex: 1 }}>
+                                    {categoryName && (
+                                        <span style={{ fontFamily: DISPLAY, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: T.gold, marginBottom: 6, display: 'block' }}>
+                                            {categoryName}
                                         </span>
-                                    ))}
-                                </h1>
-                                {/* Top right buttons */}
-                                <div style={{ display: 'flex', gap: 10 }}>
-                                    {[Heart, Share2].map((Icon, idx) => (
-                                        <button key={idx} style={{
-                                            width: 36, height: 36, borderRadius: 8,
-                                            background: 'transparent', border: `1px solid ${C.border}`,
-                                            color: C.muted, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            cursor: 'pointer', transition: 'all 0.2s'
-                                        }}
-                                            onMouseEnter={e => { e.currentTarget.style.color = C.text; e.currentTarget.style.borderColor = C.muted; }}
-                                            onMouseLeave={e => { e.currentTarget.style.color = C.muted; e.currentTarget.style.borderColor = C.border; }}
-                                        >
-                                            <Icon size={16} />
-                                        </button>
-                                    ))}
+                                    )}
+                                    <h1 style={{ margin: 0, fontFamily: SERIF, fontSize: '1.75rem', fontWeight: 700, color: T.text, lineHeight: 1.2 }}>
+                                        {gem.title}
+                                    </h1>
+                                </div>
+                                <div style={{ display: 'flex', gap: 8, marginLeft: 12 }}>
+                                    <AddToWatchlistButton gemId={gem.id} auctionId={gem.auction?.id} size="sm" />
+                                    <button style={{
+                                        width: 36, height: 36, borderRadius: 8,
+                                        background: 'transparent', border: `0.5px solid ${T.border}`,
+                                        color: T.muted, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: 'pointer', transition: 'all 0.2s',
+                                    }}>
+                                        <Share2 size={16} />
+                                    </button>
                                 </div>
                             </div>
 
-                            {/* Specifications Grid */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-                                {[
-                                    { label: 'CARAT', value: `${gem.carat} ct` },
-                                    { label: 'COLOR', value: gem.colorDesc },
-                                    { label: 'CLARITY', value: gem.clarity },
-                                    { label: 'CUT', value: gem.cut }
-                                ].map(spec => (
-                                    <div key={spec.label} style={{ textAlign: 'center' }}>
-                                        <div style={{ color: C.dim, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 6 }}>
-                                            {spec.label}
+                            {/* Specs grid */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+                                {specs.map(s => (
+                                    <div key={s.label} style={{ textAlign: 'center', padding: '10px 0', background: T.bg, borderRadius: 8 }}>
+                                        <div style={{ fontFamily: DISPLAY, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.faint, marginBottom: 4 }}>
+                                            {s.label}
                                         </div>
-                                        <div style={{ color: C.text, fontSize: '0.9rem', fontWeight: 800 }}>
-                                            {spec.value}
+                                        <div style={{ fontFamily: BODY, fontSize: '0.85rem', fontWeight: 700, color: T.text }}>
+                                            {s.value}
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        {/* Bidding Block */}
-                        <div style={{ ...glassCard, padding: '30px' }}>
-                            {/* Timer */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: C.gold, fontWeight: 700, fontSize: '0.9rem', marginBottom: 24 }}>
-                                <Clock size={16} /> Ends in {gem.ends}
-                            </div>
-
-                            {/* Prices */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 30 }}>
-                                <div>
-                                    <div style={{ color: C.dim, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
-                                        CURRENT BID
+                        {/* Certification */}
+                        {(() => {
+                            const certsArr = gem.certificates ? (Array.isArray(gem.certificates) ? gem.certificates : [gem.certificates]) : [];
+                            const verified = certsArr.find(c => c.status === 'verified');
+                            const pending = !verified && certsArr.find(c => c.status === 'pending');
+                            const certInfo = verified || pending;
+                            if (!certInfo && !gem.certification) return null;
+                            const isVerified = !!verified;
+                            return (
+                                <div style={{ ...specCard, display: 'flex', alignItems: 'center', gap: 12, padding: '16px 24px' }}>
+                                    <Shield size={18} color={isVerified ? T.green : '#92400e'} />
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontFamily: DISPLAY, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.faint }}>Certification</div>
+                                        <div style={{ fontFamily: BODY, fontSize: '0.88rem', fontWeight: 700, color: T.text }}>
+                                            {certInfo?.issued_by || gem.certification || 'Certificate'}
+                                        </div>
                                     </div>
-                                    <div style={{ color: C.gold, fontSize: '2rem', fontWeight: 900, letterSpacing: '-0.02em' }}>
-                                        ${gem.bid?.toLocaleString()}
-                                    </div>
-                                    <div style={{ color: C.dim, fontSize: '0.75rem', fontWeight: 600, marginTop: 4 }}>
-                                        {gem.bids} bids
-                                    </div>
+                                    <span style={{
+                                        padding: '3px 10px', borderRadius: 20, fontSize: '0.68rem', fontWeight: 700, fontFamily: BODY,
+                                        background: isVerified ? 'rgba(22,163,74,0.08)' : 'rgba(180,83,9,0.08)',
+                                        color: isVerified ? T.green : '#92400e',
+                                        border: `1px solid ${isVerified ? 'rgba(22,163,74,0.15)' : 'rgba(180,83,9,0.15)'}`,
+                                    }}>
+                                        {isVerified ? 'Verified' : 'Pending Review'}
+                                    </span>
                                 </div>
+                            );
+                        })()}
+
+                        {/* Pricing / Listing */}
+                        <div style={specCard}>
+                            {gem.listing_type === 'direct_sell' && gem.buy_now_price && (
                                 <div>
-                                    <div style={{ color: C.dim, fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
-                                        BUY NOW PRICE
+                                    <div style={{ fontFamily: DISPLAY, fontSize: '0.63rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.faint, marginBottom: 8 }}>Buy Now Price</div>
+                                    <div style={{ fontFamily: SERIF, fontSize: '2rem', fontWeight: 700, color: T.gold }}>
+                                        ${parseFloat(gem.buy_now_price).toLocaleString()}
                                     </div>
-                                    <div style={{ color: C.text, fontSize: '1.6rem', fontWeight: 900, letterSpacing: '-0.02em', marginTop: 4 }}>
-                                        ${gem.buyNow?.toLocaleString()}
+                                    <BuyNowButton gem={gem} />
+                                </div>
+                            )}
+                            {gem.listing_type === 'auction' && (
+                                <div>
+                                    <div style={{ fontFamily: DISPLAY, fontSize: '0.63rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.faint, marginBottom: 8 }}>Listing Type</div>
+                                    <div style={{ fontFamily: BODY, fontSize: '1rem', fontWeight: 700, color: T.text }}>Auction</div>
+                                    <p style={{ margin: '10px 0 0', fontFamily: BODY, fontSize: '0.82rem', color: T.muted, lineHeight: 1.6 }}>
+                                        This gem is listed for auction. Check the auction page for bidding details.
+                                    </p>
+                                </div>
+                            )}
+                            {gem.predicted_price && (
+                                <div style={{ marginTop: 16, padding: '10px 14px', background: T.goldSoft, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontFamily: BODY, fontSize: '0.78rem', color: T.gold, fontWeight: 600 }}>
+                                        AI Estimated Value: ${parseFloat(gem.predicted_price).toLocaleString()}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Seller */}
+                        <div style={{ ...specCard, padding: 0, overflow: 'hidden' }}>
+                            <div style={{ padding: '18px 24px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                                {gem.seller?.avatar_url ? (
+                                    <img src={gem.seller.avatar_url} alt={sellerName} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${T.border}` }} />
+                                ) : (
+                                    <div style={{ width: 48, height: 48, borderRadius: '50%', background: T.sapphireBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        <span style={{ fontFamily: DISPLAY, fontWeight: 700, fontSize: '0.95rem', color: T.sapphire }}>
+                                            {sellerName.charAt(0).toUpperCase()}
+                                        </span>
                                     </div>
+                                )}
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontFamily: BODY, fontSize: '0.92rem', fontWeight: 700, color: T.text }}>{sellerName}</div>
+                                    <div style={{ fontFamily: BODY, fontSize: '0.75rem', color: T.muted }}>Seller</div>
                                 </div>
                             </div>
-
-                            <hr style={{ border: `0.5px solid ${C.border}`, margin: '0 0 24px 0' }} />
-
-                            {/* Actions */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                <button style={{
-                                    width: '100%', padding: '16px', borderRadius: 10,
-                                    background: `linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)`,
-                                    border: `1px solid ${C.gold}40`, color: C.text,
-                                    fontSize: '1rem', fontWeight: 800, cursor: 'pointer',
-                                    boxShadow: `0 8px 25px rgba(245,158,11,0.15)`,
-                                    transition: 'all 0.2s'
-                                }}
-                                    onMouseEnter={e => { e.currentTarget.style.border = `1px solid ${C.gold}`; e.currentTarget.style.boxShadow = `0 10px 30px rgba(245,158,11,0.25)`; }}
-                                    onMouseLeave={e => { e.currentTarget.style.border = `1px solid ${C.gold}40`; e.currentTarget.style.boxShadow = `0 8px 25px rgba(245,158,11,0.15)`; }}
+                            <div style={{ borderTop: `1px solid ${T.border}`, padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <RatingSummary sellerId={gem.seller?.id} compact />
+                                <Link
+                                    to={`/sellers/${gem.seller?.id}/reviews`}
+                                    style={{
+                                        fontFamily: BODY, fontSize: '0.75rem', fontWeight: 600,
+                                        color: T.gold, textDecoration: 'none',
+                                        padding: '6px 14px', borderRadius: 8,
+                                        background: T.goldSoft,
+                                        whiteSpace: 'nowrap',
+                                    }}
                                 >
-                                    Place Bid
-                                </button>
-
-                                <button style={{
-                                    width: '100%', padding: '16px', borderRadius: 10,
-                                    background: 'transparent',
-                                    border: `1px solid ${C.border}`, color: C.muted,
-                                    fontSize: '1rem', fontWeight: 700, cursor: 'pointer',
-                                    transition: 'all 0.2s'
-                                }}
-                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = C.text; }}
-                                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.muted; }}
-                                >
-                                    Buy Now
-                                </button>
+                                    All Reviews →
+                                </Link>
                             </div>
-
                         </div>
                     </div>
                 </div>
 
+                {/* Description */}
+                {gem.description && (
+                    <div style={{ ...specCard, marginTop: 32, maxWidth: 720 }}>
+                        <h3 style={{ margin: '0 0 12px', fontFamily: SERIF, fontSize: '1.2rem', fontWeight: 700, color: T.text }}>Description</h3>
+                        <p style={{ margin: 0, fontFamily: BODY, fontSize: '0.88rem', color: T.muted, lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+                            {gem.description}
+                        </p>
+                    </div>
+                )}
             </div>
+
+            <style>{`
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to   { transform: rotate(360deg); }
+                }
+            `}</style>
         </div>
     );
 };

@@ -1,16 +1,30 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate } = require('../../middleware/auth.middleware');
+const validate = require('../../middleware/validate.middleware');
+const controller = require('./watchlist.controller');
+const {
+    createFolderSchema,
+    renameFolderSchema,
+    addToWatchlistSchema,
+    moveToFolderSchema,
+} = require('./watchlist.validation');
 
-router.get('/', (req, res) => {
-    res.json({ success: true, message: 'Watchlist Module working' });
-});
+router.use(authenticate);
 
-router.post('/', (req, res) => {
-    res.json({ success: true, message: 'Add to watchlist' });
-});
+// ── Folder routes (before parameterised routes) ──
+router.get('/folders', controller.getFolders);
+router.post('/folders', validate(createFolderSchema), controller.createFolder);
+router.patch('/folders/:id', validate(renameFolderSchema), controller.renameFolder);
+router.delete('/folders/:id', controller.deleteFolder);
 
-router.delete('/:id', (req, res) => {
-    res.json({ success: true, message: `Remove from watchlist ${req.params.id}` });
-});
+// ── Watchlist check (before :gemId param) ──
+router.get('/check/:gemId', controller.checkWatchlist);
+
+// ── Watchlist CRUD ──
+router.get('/', controller.getWatchlist);
+router.post('/', validate(addToWatchlistSchema), controller.addToWatchlist);
+router.delete('/:gemId', controller.removeFromWatchlist);
+router.patch('/:id/move', validate(moveToFolderSchema), controller.moveToFolder);
 
 module.exports = router;
