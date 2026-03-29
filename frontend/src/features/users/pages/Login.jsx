@@ -64,8 +64,7 @@ const Login = () => {
             const role = profile?.role ?? 'buyer';
             if (from) return navigate(from, { replace: true });
             if (role === 'admin')  return navigate('/admin-dashboard',  { replace: true });
-            if (role === 'seller') return navigate('/seller-dashboard', { replace: true });
-            navigate('/overview', { replace: true });
+            navigate('/gems', { replace: true });
         } catch (err) {
             const msg = err.response?.data?.message ?? err.message ?? 'Sign in failed. Please try again.';
             if (err.response?.status === 403) {

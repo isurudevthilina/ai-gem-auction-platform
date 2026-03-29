@@ -63,6 +63,36 @@ const hasPendingTransactions = async (userId) => {
     return (data || []).length > 0;
 };
 
+const hasAnyTransactions = async (userId) => {
+    const { data } = await supabaseAdmin
+        .from('transactions')
+        .select('id')
+        .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
+        .limit(1);
+    return (data || []).length > 0;
+};
+
+/**
+ * Clean up user data via stored procedure (bypasses no_delete_bids rule),
+ * then delete from auth.users.
+ * Requires delete_user_data() function — see migration 004.
+ */
+const purgeUserAndDelete = async (userId) => {
+    const { error: rpcErr } = await supabaseAdmin.rpc('delete_user_data', {
+        target_user_id: userId,
+    });
+    if (rpcErr) {
+        console.error('purgeUserAndDelete rpc error:', rpcErr);
+        throw new ApiError(500, 'Failed to clean up user data');
+    }
+
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (error) {
+        console.error('purgeUserAndDelete auth delete error:', error);
+        throw new ApiError(500, 'Failed to delete user from auth');
+    }
+};
+
 module.exports = {
     findById,
     update,
@@ -70,6 +100,8 @@ module.exports = {
     findByEmail,
     hasActiveAuctions,
     hasPendingTransactions,
+    hasAnyTransactions,
+    purgeUserAndDelete,
     adminFindAll,
     adminFindById,
     adminUpdateUser,
@@ -292,7 +324,11 @@ async function adminDeactivateUser(userId, adminId) {
     }
 
     const { error: delErr } = await supabaseAdmin.auth.admin.deleteUser(userId);
-    if (delErr) throw new ApiError(500, 'Failed to deactivate user');
+    if (delErr) {
+        console.error('adminDeactivateUser deleteUser error:', delErr);
+        // Fallback: manually purge data then delete
+        await purgeUserAndDelete(userId);
+    }
 
     return { deleted: true, userId };
 }

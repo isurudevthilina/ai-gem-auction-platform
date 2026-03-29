@@ -143,7 +143,7 @@ const update = async (id, updates) => {
 const findRaw = async (id) => {
     const { data, error } = await supabaseAdmin
         .from('auctions')
-        .select('id, seller_id, status, bid_count, gem_id')
+        .select('id, seller_id, status, bid_count, gem_id, start_time')
         .eq('id', id)
         .single();
 
@@ -181,4 +181,11 @@ const findBids = async ({ auction_id, page = 1, limit = 20 }) => {
     };
 };
 
-module.exports = { findAll, findById, findBySeller, create, update, findRaw, findBids };
+const remove = async (id) => {
+    const { error } = await supabaseAdmin.rpc('delete_auction_data', {
+        target_auction_id: id,
+    });
+    if (error) throw error;
+};
+
+module.exports = { findAll, findById, findBySeller, create, update, findRaw, findBids, remove };

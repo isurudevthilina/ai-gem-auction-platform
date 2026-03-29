@@ -29,7 +29,10 @@ const uploadAvatar = async (userId, file) => {
     const { error: uploadError } = await supabaseAdmin.storage
         .from('avatars')
         .upload(path, file.buffer, { contentType: file.mimetype, upsert: true });
-    if (uploadError) throw new ApiError(500, 'Failed to upload avatar');
+    if (uploadError) {
+        console.error('Avatar upload error:', uploadError);
+        throw new ApiError(500, 'Failed to upload avatar');
+    }
 
     const { data: urlData } = supabaseAdmin.storage.from('avatars').getPublicUrl(path);
     return repository.updateAvatar(userId, urlData.publicUrl);
@@ -73,24 +76,28 @@ const deleteAccount = async (userId, currentPassword) => {
     const profile = await repository.findById(userId);
     if (!profile) throw new ApiError(404, 'Profile not found');
 
+    // Sellers cannot delete their own account
+    if (profile.role === 'seller') {
+        throw new ApiError(403, 'Seller accounts cannot be deleted. Please contact support.');
+    }
+
     const { error: authError } = await supabaseAdmin.auth.signInWithPassword({
         email: profile.email,
         password: currentPassword,
     });
     if (authError) throw new ApiError(401, 'Current password is incorrect');
 
-    const hasAuctions = await repository.hasActiveAuctions(userId);
-    if (hasAuctions) {
-        throw new ApiError(400, 'Cannot delete account with active auctions. Cancel them first.');
-    }
-
-    const hasTx = await repository.hasPendingTransactions(userId);
+    // Buyers cannot delete if they have any transactions
+    const hasTx = await repository.hasAnyTransactions(userId);
     if (hasTx) {
-        throw new ApiError(400, 'Cannot delete account with pending transactions.');
+        throw new ApiError(400, 'Cannot delete account with existing transactions.');
     }
 
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
-    if (deleteError) throw new ApiError(500, 'Failed to delete account');
+    if (deleteError) {
+        // Fallback: manually purge data then delete
+        await repository.purgeUserAndDelete(userId);
+    }
 
     return { message: 'Account deleted successfully.' };
 };

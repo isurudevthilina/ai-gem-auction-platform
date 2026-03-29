@@ -122,10 +122,20 @@ const cancelAuction = async (id, requestUser) => {
         return { error: 'has_bids' };
     }
 
+    const isScheduled = new Date(auction.start_time) > new Date();
+
+    if (isScheduled && auction.bid_count === 0) {
+        // Hard delete — auction hasn't started and has no bids
+        await repo.remove(id);
+        await supabaseAdmin.from('gems').update({ status: 'draft' }).eq('id', auction.gem_id);
+        return { success: true, hard_deleted: true };
+    }
+
+    // Soft cancel — auction is live
     await supabaseAdmin.from('auctions').update({ status: 'cancelled' }).eq('id', id);
     await supabaseAdmin.from('gems').update({ status: 'draft' }).eq('id', auction.gem_id);
 
-    return { success: true };
+    return { success: true, hard_deleted: false };
 };
 
 const placeBid = async (auctionId, bidderId, amount) => {

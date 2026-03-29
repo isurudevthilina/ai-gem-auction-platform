@@ -15,7 +15,7 @@ const schema = z.object({
     name: z.string().trim().min(1, 'Folder name is required').max(60, 'Maximum 60 characters'),
 });
 
-const CreateFolderModal = ({ isOpen, onClose, mode = 'create', folder, onSubmit }) => {
+const CreateFolderModal = ({ isOpen, onClose, mode = 'create', folder, onSubmit, existingFolders = [] }) => {
     const [serverError, setServerError] = useState('');
     const { register, handleSubmit, formState: { errors, isSubmitting }, watch, reset } = useForm({
         resolver: zodResolver(schema),
@@ -43,6 +43,15 @@ const CreateFolderModal = ({ isOpen, onClose, mode = 'create', folder, onSubmit 
     const doSubmit = async (data) => {
         try {
             setServerError('');
+            const trimmed = data.name.trim().toLowerCase();
+            const isDuplicate = existingFolders.some(f => {
+                if (mode === 'rename' && folder && f.id === folder.id) return false;
+                return f.name.toLowerCase() === trimmed;
+            });
+            if (isDuplicate) {
+                setServerError('A folder with this name already exists');
+                return;
+            }
             await onSubmit(data.name);
         } catch (err) {
             setServerError(err?.message || 'Something went wrong');

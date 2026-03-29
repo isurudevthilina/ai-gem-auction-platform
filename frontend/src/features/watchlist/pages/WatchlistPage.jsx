@@ -137,6 +137,7 @@ const WatchlistPage = () => {
                 isOpen={createModalOpen}
                 onClose={() => setCreateModalOpen(false)}
                 mode="create"
+                existingFolders={(folders || []).filter(f => f.id !== 'all' && f.id !== 'uncategorized')}
                 onSubmit={async (name) => {
                     await createFolder.mutateAsync(name);
                     setCreateModalOpen(false);
@@ -150,6 +151,7 @@ const WatchlistPage = () => {
                     onClose={() => setRenameModal(null)}
                     mode="rename"
                     folder={renameModal}
+                    existingFolders={(folders || []).filter(f => f.id !== 'all' && f.id !== 'uncategorized')}
                     onSubmit={async (name) => {
                         await renameFolder.mutateAsync({ id: renameModal.id, name });
                         setRenameModal(null);

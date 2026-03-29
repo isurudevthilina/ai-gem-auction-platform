@@ -15,13 +15,14 @@ const registerUser = async (data) => {
         throw new ApiError(409, 'Email already registered.');
     }
 
-    // Create user via Supabase Admin
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: { full_name, role, phone_number: phone_number || undefined },
-    });
+// Create user via Supabase client signUp (triggers confirmation email via SMTP)
+const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+        data: { full_name, role, phone_number: phone_number || undefined },
+    },
+});
 
     if (authError) {
         if (authError.message && authError.message.includes('already been registered')) {

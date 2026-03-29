@@ -36,10 +36,13 @@ const getFolders = async (userId) => {
 const createFolder = async (userId, name) => {
     const { data: existing, error: cErr } = await supabaseAdmin
         .from('watchlist_folders')
-        .select('id')
+        .select('id, name')
         .eq('user_id', userId);
     if (cErr) throw new ApiError(500, cErr.message);
     if (existing.length >= 20) throw new ApiError(400, 'Maximum 20 folders allowed');
+
+    const duplicate = existing.some(f => f.name.toLowerCase() === name.trim().toLowerCase());
+    if (duplicate) throw new ApiError(409, 'A folder with this name already exists');
 
     const { data, error } = await supabaseAdmin
         .from('watchlist_folders')
@@ -51,6 +54,16 @@ const createFolder = async (userId, name) => {
 };
 
 const renameFolder = async (folderId, userId, name) => {
+    const { data: existing, error: cErr } = await supabaseAdmin
+        .from('watchlist_folders')
+        .select('id, name')
+        .eq('user_id', userId)
+        .neq('id', folderId);
+    if (cErr) throw new ApiError(500, cErr.message);
+
+    const duplicate = existing.some(f => f.name.toLowerCase() === name.trim().toLowerCase());
+    if (duplicate) throw new ApiError(409, 'A folder with this name already exists');
+
     const { data, error } = await supabaseAdmin
         .from('watchlist_folders')
         .update({ name, updated_at: new Date().toISOString() })

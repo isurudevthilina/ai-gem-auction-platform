@@ -162,6 +162,7 @@ const AddToWatchlistButton = ({ gemId, auctionId, size = 'md' }) => {
                     isOpen={showCreateModal}
                     onClose={() => setShowCreateModal(false)}
                     mode="create"
+                    existingFolders={(folders || []).filter(f => f.id !== 'all' && f.id !== 'uncategorized')}
                     onSubmit={async (name) => {
                         await createFolderMutation.mutateAsync(name);
                         setShowCreateModal(false);

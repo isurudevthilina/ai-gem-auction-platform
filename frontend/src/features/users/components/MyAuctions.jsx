@@ -91,8 +91,11 @@ const MyAuctions = () => {
     const handleCancel = async (id) => {
         setBusy(true);
         try {
-            await deleteAuction(id);
-            showToast('Auction cancelled.');
+            const res = await deleteAuction(id);
+            const msg = res.hard_deleted
+                ? 'Auction deleted. Gem returned to your listings.'
+                : 'Auction cancelled.';
+            showToast(msg);
             fetchAuctions();
         } catch (err) {
             showToast(err?.message || 'Cancel failed', 'error');
@@ -248,7 +251,7 @@ const MyAuctions = () => {
                                         </button>
 
                                         {(cls === 'active' || cls === 'scheduled') && (
-                                            <button onClick={() => setConfirmCancelId(auction.id)} title="Cancel" style={{
+                                            <button onClick={() => setConfirmCancelId(auction.id)} title={cls === 'scheduled' ? 'Delete' : 'Cancel'} style={{
                                                 width: 30, height: 30, borderRadius: 6,
                                                 border: `1px solid ${C.border}`, background: C.white,
                                                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -286,7 +289,9 @@ const MyAuctions = () => {
                                             padding: 16, zIndex: 20, width: 240,
                                         }}>
                                             <div style={{ fontFamily: BODY, fontSize: '0.82rem', color: C.text, fontWeight: 600, marginBottom: 12 }}>
-                                                Cancel this auction? This cannot be undone.
+                                                {cls === 'scheduled'
+                                                    ? 'Delete this upcoming auction? The gem will return to your listings.'
+                                                    : 'Cancel this auction? This cannot be undone.'}
                                             </div>
                                             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                                                 <button onClick={() => setConfirmCancelId(null)} style={{
@@ -299,7 +304,7 @@ const MyAuctions = () => {
                                                     border: 'none', background: C.red, color: '#fff',
                                                     fontFamily: BODY, fontSize: '0.78rem', fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer',
                                                     opacity: busy ? 0.7 : 1,
-                                                }}>Cancel Auction</button>
+                                                }}>{cls === 'scheduled' ? 'Delete Auction' : 'Cancel Auction'}</button>
                                             </div>
                                         </div>
                                     )}

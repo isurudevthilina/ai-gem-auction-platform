@@ -122,6 +122,7 @@ const LiveAuctionPage = () => {
 
     const noBids = (auction.bid_count || 0) === 0;
     const isActive = auction.status === 'active' && !countdown.expired;
+    const isScheduled = auction.status === 'active' && new Date(auction.start_time) > new Date();
     const isOwner = user?.id === auction.seller_id || user?.id === seller?.id || user?.role === 'admin';
 
     const specs = [
@@ -292,9 +293,11 @@ const LiveAuctionPage = () => {
                         <div style={{ width: 56, height: 56, borderRadius: '50%', margin: '0 auto 18px', background: 'rgba(185,28,28,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <XCircle size={26} color={C.red} />
                         </div>
-                        <h2 style={{ margin: '0 0 8px', fontFamily: SERIF, fontSize: '1.4rem', fontWeight: 700, color: C.text }}>Cancel Auction?</h2>
+                        <h2 style={{ margin: '0 0 8px', fontFamily: SERIF, fontSize: '1.4rem', fontWeight: 700, color: C.text }}>{isScheduled ? 'Delete Auction?' : 'Cancel Auction?'}</h2>
                         <p style={{ margin: '0 0 22px', fontFamily: BODY, fontSize: '0.85rem', color: C.muted, lineHeight: 1.6 }}>
-                            This will cancel the auction and return the gem to draft status.{(auction.bid_count || 0) > 0 ? ' All existing bids will be voided.' : ''} This action cannot be undone.
+                            {isScheduled
+                                ? 'This will permanently delete the upcoming auction and return the gem to your listings.'
+                                : <>This will cancel the auction and return the gem to draft status.{(auction.bid_count || 0) > 0 ? ' All existing bids will be voided.' : ''} This action cannot be undone.</>}
                         </p>
                         {cancelError && (
                             <div style={{ margin: '0 0 18px', padding: '10px 16px', borderRadius: 10, background: 'rgba(185,28,28,0.06)', border: '1px solid rgba(185,28,28,0.15)', fontFamily: BODY, fontSize: '0.82rem', color: C.red, fontWeight: 600 }}>{cancelError}</div>
@@ -304,11 +307,14 @@ const LiveAuctionPage = () => {
                             <button disabled={cancelling} onClick={async () => {
                                 setCancelling(true);
                                 setCancelError(null);
-                                try { await deleteAuction(auction.id); navigate('/auctions'); }
+                                try {
+                                    const res = await deleteAuction(auction.id);
+                                    navigate(res.hard_deleted ? '/gems' : '/auctions');
+                                }
                                 catch (err) { setCancelError(err?.response?.data?.message || err.message || 'Failed to cancel auction'); }
                                 finally { setCancelling(false); }
                             }} style={{ padding: '11px 24px', borderRadius: 10, border: 'none', cursor: cancelling ? 'not-allowed' : 'pointer', background: C.red, color: '#fff', fontFamily: BODY, fontSize: '0.85rem', fontWeight: 700, opacity: cancelling ? 0.7 : 1 }}>
-                                {cancelling ? 'Cancelling…' : 'Cancel Auction'}
+                                {cancelling ? (isScheduled ? 'Deleting…' : 'Cancelling…') : (isScheduled ? 'Delete Auction' : 'Cancel Auction')}
                             </button>
                         </div>
                     </div>
