@@ -149,4 +149,13 @@ const getUploadUrl = async (ext, sellerId) => {
     return { path: data.path, token: data.token };
 };
 
-module.exports = { findBySeller, findByGem, create, updateStatus, findAll, findById, delete: deleteCert, getCertStats, getUploadUrl };
+const getSignedDownloadUrl = async (storagePath, expiresIn = 3600) => {
+    const { data, error } = await supabaseAdmin.storage
+        .from('certificates')
+        .createSignedUrl(storagePath, expiresIn);
+
+    if (error) throw error;
+    return data.signedUrl;
+};
+
+module.exports = { findBySeller, findByGem, create, updateStatus, findAll, findById, delete: deleteCert, getCertStats, getUploadUrl, getSignedDownloadUrl };

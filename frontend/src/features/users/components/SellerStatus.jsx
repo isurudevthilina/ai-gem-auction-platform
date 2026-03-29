@@ -4,6 +4,7 @@ import { Package, Gavel, DollarSign, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { getMyGems } from '../../gems/services/gemsService';
 import { getAuctions, getBids } from '../../auctions/services/auctionsService';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 /* ─── Design tokens ─── */
 const C = {
@@ -19,6 +20,7 @@ const BODY = "'Jost','Inter',sans-serif";
 const SellerStatus = ({ profile }) => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { formatPrice } = useCurrency();
     const [gems, setGems] = useState([]);
     const [auctions, setAuctions] = useState([]);
     const [recentBids, setRecentBids] = useState([]);
@@ -65,7 +67,7 @@ const SellerStatus = ({ profile }) => {
     const stats = [
         { label: 'Total Listings', value: gems.length, sub: 'gems listed', Icon: Package, color: C.sapphire },
         { label: 'Active Auctions', value: activeAuctions.length, sub: 'live right now', Icon: Gavel, color: C.gold, pulse: activeAuctions.length > 0 },
-        { label: 'Revenue Earned', value: `$${revenue.toLocaleString()}`, sub: 'from completed auctions', Icon: DollarSign, color: C.green },
+        { label: 'Revenue Earned', value: formatPrice(revenue), sub: 'from completed auctions', Icon: DollarSign, color: C.green },
         { label: 'Sold Gems', value: soldGems.length, sub: 'gems sold', Icon: CheckCircle, color: C.sapphire },
     ];
 
@@ -180,7 +182,7 @@ const SellerStatus = ({ profile }) => {
                                     {/* Amount + time */}
                                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                                         <div style={{ fontFamily: DISPLAY, fontSize: '0.9rem', fontWeight: 700, color: C.gold }}>
-                                            ${Number(bid.amount).toLocaleString()}
+                                            {formatPrice(bid.amount)}
                                         </div>
                                         <div style={{ fontFamily: BODY, fontSize: '0.68rem', color: C.faint }}>
                                             {timeAgo(bid.created_at)}

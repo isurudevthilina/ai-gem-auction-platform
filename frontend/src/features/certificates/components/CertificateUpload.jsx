@@ -3,7 +3,7 @@ import { getMyGems } from '../../gems/services/gemsService';
 import {
     getCertificates, getUploadUrl,
     uploadCertificateFile, createCertificate,
-    deleteCertificate,
+    deleteCertificate, getDocumentUrl,
 } from '../services/certificatesService';
 
 /* ─── Design tokens ─── */
@@ -423,10 +423,16 @@ const CertificateUpload = () => {
 
                                         {/* View PDF link */}
                                         {cert.document_url && (
-                                            <a href={cert.document_url} target="_blank" rel="noopener noreferrer" style={{
+                                            <button onClick={async () => {
+                                                try {
+                                                    const res = await getDocumentUrl(cert.id);
+                                                    if (res.data?.url) window.open(res.data.url, '_blank');
+                                                } catch { /* ignore */ }
+                                            }} style={{
                                                 fontFamily: BODY, fontSize: '0.75rem', fontWeight: 600,
-                                                color: C.sapphire, textDecoration: 'none', flexShrink: 0,
-                                            }}>View PDF</a>
+                                                color: C.sapphire, background: 'none', border: 'none',
+                                                cursor: 'pointer', padding: 0, flexShrink: 0,
+                                            }}>View PDF</button>
                                         )}
 
                                         {/* Re-upload button (rejected or pending) */}

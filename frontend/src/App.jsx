@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
+import { CurrencyProvider } from './context/CurrencyContext';
 import ProtectedRoute from './shared/components/ProtectedRoute';
 import PublicLayout from './shared/components/PublicLayout';
 import ErrorBoundary from './shared/components/ErrorBoundary';
@@ -20,6 +21,7 @@ import CreateAuctionPage from './features/auctions/pages/CreateAuctionPage';
 import AIPredictorPage from './features/AI/pages/AIPredictor';
 import GemListPage from './features/gems/pages/GemListPage';
 import CreateGemPage from './features/gems/pages/CreateGemPage';
+import EditGemPage from './features/gems/pages/EditGemPage';
 import WatchlistPage from './features/watchlist/pages/WatchlistPage';
 import BidHistoryPage from './features/auctions/pages/BidHistoryPage';
 import PurchaseRequestsPage from './features/transactions/pages/PurchaseRequestsPage';
@@ -51,6 +53,7 @@ function App() {
         <QueryClientProvider client={queryClient}>
         <ThemeProvider>
             <AuthProvider>
+            <CurrencyProvider>
                 <RealtimeManager />
                 <ErrorBoundary>
                 <Router>
@@ -133,10 +136,15 @@ function App() {
                             </ProtectedRoute>
                         } />
 
-                        {/* ── Protected — seller/admin gem creation ── */}
+                        {/* ── Protected — seller/admin gem creation & editing ── */}
                         <Route path="/gems/new" element={
                             <ProtectedRoute roles={['seller', 'admin']}>
                                 <PublicLayout><CreateGemPage /></PublicLayout>
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/gems/:id/edit" element={
+                            <ProtectedRoute roles={['seller', 'admin']}>
+                                <PublicLayout><EditGemPage /></PublicLayout>
                             </ProtectedRoute>
                         } />
 
@@ -190,6 +198,7 @@ function App() {
                     </Routes>
                 </Router>
                 </ErrorBoundary>
+            </CurrencyProvider>
             </AuthProvider>
             <ToastContainer />
         </ThemeProvider>

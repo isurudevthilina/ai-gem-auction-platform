@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatusBadge from './TransactionStatusBadge';
 import { useCheckCanReview } from '../../reviews/hooks/useReviews';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
   bg: '#F0EDE8', white: '#FFFFFF', sapphire: '#1A4D8C', gold: '#C4892A',
@@ -41,6 +42,7 @@ const ReviewButton = ({ transactionId }) => {
 const PurchaseRequestCard = ({ item, role, onOpenPayment, onOpenOffline, onMarkComplete }) => {
   const [hovered, setHovered] = useState(false);
   const navigate = useNavigate();
+  const { formatPrice } = useCurrency();
 
   const gem = item.gem || {};
   const images = gem.images || [];
@@ -104,7 +106,7 @@ const PurchaseRequestCard = ({ item, role, onOpenPayment, onOpenOffline, onMarkC
         {/* Amount + type */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontFamily: SERIF, fontSize: '1.2rem', fontWeight: 700, color: C.sapphire }}>
-            ${amt.toLocaleString()}
+            {formatPrice(amt)}
           </span>
           {requiresOffline ? (
             <span style={{ background: 'rgba(217,119,6,0.10)', color: '#d97706', borderRadius: 4, padding: '2px 8px', fontFamily: BODY, fontSize: '0.72rem', fontWeight: 600 }}>

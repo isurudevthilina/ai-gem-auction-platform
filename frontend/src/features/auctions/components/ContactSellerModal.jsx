@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
     bg: '#F0EDE8', white: '#FFFFFF', sapphire: '#1A4D8C', gold: '#C4892A',
@@ -11,6 +12,7 @@ const BODY    = "'Jost','Inter',sans-serif";
 
 const ContactSellerModal = ({ isOpen, onClose, item }) => {
     const navigate = useNavigate();
+    const { formatPrice } = useCurrency();
 
     useEffect(() => {
         if (!isOpen) return;
@@ -66,7 +68,7 @@ const ContactSellerModal = ({ isOpen, onClose, item }) => {
                         }}>{gem?.title}</div>
                         <div style={{
                             fontFamily: BODY, fontSize: '0.85rem', color: C.gold, fontWeight: 600,
-                        }}>Winning bid: ${parseFloat(item.amount).toLocaleString()}</div>
+                        }}>Winning bid: {formatPrice(item.amount)}</div>
                     </div>
                 </div>
 

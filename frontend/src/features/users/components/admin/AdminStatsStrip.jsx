@@ -1,4 +1,5 @@
 import AdminStatCard from './AdminStatCard';
+import { useCurrency } from '../../../../context/CurrencyContext';
 
 /* ── tiny SVG icons ── */
 const I = {
@@ -22,6 +23,7 @@ const fmt = (n) => {
 };
 
 const AdminStatsStrip = ({ stats, isLoading }) => {
+  const { formatPrice } = useCurrency();
   const s = stats || {};
   const cards = [
     { label: 'Total Users', value: fmt(s.total_users), subValue: s.new_users_today != null ? `+${s.new_users_today} today` : undefined, icon: I.users, color: 'navy', trend: s.new_users_this_week ? { direction: 'up', value: `+${s.new_users_this_week} this week` } : undefined },
@@ -33,7 +35,7 @@ const AdminStatsStrip = ({ stats, isLoading }) => {
     { label: 'Pending Certificates', value: fmt(s.pending_certificates), icon: I.shield, color: s.pending_certificates > 0 ? 'amber' : 'green' },
     { label: 'Platform Rating', value: s.avg_rating_platform ?? 'N/A', subValue: s.total_reviews != null ? `${s.total_reviews} reviews` : undefined, icon: I.star, color: 'gold' },
     { label: 'Total Transactions', value: fmt(s.total_transactions), subValue: s.completed_transactions != null ? `${s.completed_transactions} completed` : undefined, icon: I.receipt, color: 'navy' },
-    { label: 'Simulated Revenue', value: s.total_revenue_simulated != null ? `$${fmt(s.total_revenue_simulated)}` : '--', subValue: 'Demo transactions only', icon: I.dollar, color: 'green' },
+    { label: 'Simulated Revenue', value: s.total_revenue_simulated != null ? formatPrice(s.total_revenue_simulated) : '--', subValue: 'Demo transactions only', icon: I.dollar, color: 'green' },
   ];
 
   return (

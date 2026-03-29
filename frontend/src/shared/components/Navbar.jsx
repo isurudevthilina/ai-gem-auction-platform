@@ -6,6 +6,7 @@ import ProfileAvatar from './ProfileAvatar';
 import NotificationBell from '../../features/notifications/components/NotificationBell';
 import NotificationPanel from '../../features/notifications/components/NotificationPanel';
 import GlobalSearchModal from './GlobalSearchModal';
+import CurrencySelector from './CurrencySelector';
 
 const navLinkStyle = {
     fontFamily: "'Cormorant Garamond', serif",
@@ -169,7 +170,8 @@ function Navbar() {
                         }}>⌘K</kbd>
                     </button>
 
-                    {/* Auth section */}
+                    {/* Currency + Auth section */}
+                    <CurrencySelector />
                     {!isLoading && (
                         isAuthenticated ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

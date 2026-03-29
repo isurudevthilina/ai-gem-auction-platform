@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../api/client';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 /* ─── Design tokens ─── */
 const C = {
@@ -50,6 +51,7 @@ const StatCard = ({ label, value, icon: Icon, color, to, loading }) => (
 
 /* ─── Recent Bid Row ─── */
 const BidRow = ({ bid }) => {
+    const { formatPrice } = useCurrency();
     const a = bid.auction || bid.auctions;
     const gem = a?.gem || a?.gems;
     const imgUrl = Array.isArray(gem?.images) ? gem.images.find(u => !u.startsWith('model:')) : null;
@@ -97,7 +99,7 @@ const BidRow = ({ bid }) => {
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <div style={{ color: C.gold, fontWeight: 800, fontSize: '0.95rem', fontFamily: BODY }}>
-                    ${Number(bid.amount).toLocaleString()}
+                    {formatPrice(bid.amount)}
                 </div>
             </div>
             <span style={{

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import BidStatusBadge from './BidStatusBadge';
 import AddToWatchlistButton from '../../watchlist/components/AddToWatchlistButton';
 import { useGetAuctionBids } from '../hooks/useBidHistory';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
     bg: '#F0EDE8', white: '#FFFFFF', sapphire: '#1A4D8C', gold: '#C4892A',
@@ -40,6 +41,7 @@ const ChevronDown = ({ flipped }) => (
 
 const BidHistoryCard = ({ item, onContactSeller }) => {
     const navigate = useNavigate();
+    const { formatPrice } = useCurrency();
     const [expanded, setExpanded] = useState(false);
     const [timeLeft, setTimeLeft] = useState(item.time_remaining_ms);
     const [hovered, setHovered] = useState(false);
@@ -145,7 +147,7 @@ const BidHistoryCard = ({ item, onContactSeller }) => {
                         }}>My Bid</div>
                         <div style={{
                             fontFamily: DISPLAY, fontSize: '1rem', fontWeight: 600, color: C.sapphire,
-                        }}>${parseFloat(item.amount).toLocaleString()}</div>
+                        }}>{formatPrice(item.amount)}</div>
                     </div>
 
                     {/* Current Price */}
@@ -156,11 +158,11 @@ const BidHistoryCard = ({ item, onContactSeller }) => {
                         }}>Current Price</div>
                         <div style={{
                             fontFamily: DISPLAY, fontSize: '1rem', fontWeight: 600, color: priceColor,
-                        }}>${parseFloat(auction?.current_price || 0).toLocaleString()}</div>
+                        }}>{formatPrice(auction?.current_price || 0)}</div>
                         {item.outbid_by_amount != null && item.outbid_by_amount > 0 && (
                             <div style={{
                                 fontFamily: BODY, fontSize: '0.72rem', color: C.red,
-                            }}>+${parseFloat(item.outbid_by_amount).toLocaleString()} above your bid</div>
+                            }}>+{formatPrice(item.outbid_by_amount)} above your bid</div>
                         )}
                     </div>
 
@@ -234,7 +236,7 @@ const BidHistoryCard = ({ item, onContactSeller }) => {
                                 }}>
                                     <span style={{
                                         fontFamily: BODY, fontSize: '0.88rem', fontWeight: 700, color: C.text,
-                                    }}>${parseFloat(bid.amount).toLocaleString()}</span>
+                                    }}>{formatPrice(bid.amount)}</span>
                                     <span style={{
                                         fontFamily: BODY, fontSize: '0.78rem', color: C.muted,
                                     }}>{new Date(bid.created_at).toLocaleString()}</span>
@@ -280,7 +282,7 @@ const BidHistoryCard = ({ item, onContactSeller }) => {
                         {item.outbid_by_amount != null && (
                             <span style={{
                                 fontFamily: BODY, fontSize: '0.78rem', color: C.red, textAlign: 'center',
-                            }}>Outbid by ${parseFloat(item.outbid_by_amount).toLocaleString()}</span>
+                            }}>Outbid by {formatPrice(item.outbid_by_amount)}</span>
                         )}
                     </>
                 )}
@@ -308,7 +310,7 @@ const BidHistoryCard = ({ item, onContactSeller }) => {
                         }}>View Auction</button>
                         <span style={{
                             fontFamily: BODY, fontSize: '0.78rem', color: C.faint, textAlign: 'center',
-                        }}>Sold for ${parseFloat(auction?.current_price || 0).toLocaleString()}</span>
+                        }}>Sold for {formatPrice(auction?.current_price || 0)}</span>
                     </>
                 )}
 

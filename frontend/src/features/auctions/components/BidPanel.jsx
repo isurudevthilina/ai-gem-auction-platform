@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { placeBid } from '../services/auctionsService';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
     bg:        '#F0EDE8',
@@ -26,6 +27,7 @@ const BODY    = "'Jost', 'Inter', sans-serif";
  *   isExpired   — bool from useCountdown
  */
 const BidPanel = ({ auction, onBidPlaced, isExpired }) => {
+    const { formatPrice } = useCurrency();
     const [amount,      setAmount]      = useState('');
     const [loading,     setLoading]     = useState(false);
     const [success,     setSuccess]     = useState(null);
@@ -46,7 +48,7 @@ const BidPanel = ({ auction, onBidPlaced, isExpired }) => {
             return;
         }
         if (parsed < minRequired) {
-            setError(`Minimum bid is $${minRequired.toLocaleString()}.`);
+            setError(`Minimum bid is ${formatPrice(minRequired)}.`);
             return;
         }
 
@@ -56,7 +58,7 @@ const BidPanel = ({ auction, onBidPlaced, isExpired }) => {
 
         try {
             const res = await placeBid(auction.id, parsed);
-            setSuccess(`Bid of $${parsed.toLocaleString()} placed!`);
+            setSuccess(`Bid of ${formatPrice(parsed)} placed!`);
             setAmount('');
             setFlashGreen(true);
             setTimeout(() => setFlashGreen(false), 1500);
@@ -97,10 +99,10 @@ const BidPanel = ({ auction, onBidPlaced, isExpired }) => {
                     {(auction?.bid_count || 0) === 0 ? 'STARTING BID' : 'CURRENT BID'}
                 </div>
                 <div style={{ color: flashGreen ? C.green : C.gold, fontSize: '2rem', fontFamily: BODY, fontWeight: 900, lineHeight: 1 }}>
-                    ${currentPrice.toLocaleString()}
+                    {formatPrice(currentPrice)}
                 </div>
                 <div style={{ color: C.muted, fontSize: '0.75rem', fontFamily: BODY, marginTop: 4 }}>
-                    {auction?.bid_count || 0} bids · min next: ${minRequired.toLocaleString()}
+                    {auction?.bid_count || 0} bids · min next: {formatPrice(minRequired)}
                 </div>
             </motion.div>
 
@@ -131,7 +133,7 @@ const BidPanel = ({ auction, onBidPlaced, isExpired }) => {
                                         transition:   'all 0.15s',
                                     }}
                                 >
-                                    ${amt.toLocaleString()}
+                                    {formatPrice(amt)}
                                 </button>
                             ))}
                         </div>

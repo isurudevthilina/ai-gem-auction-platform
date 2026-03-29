@@ -8,6 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, RotateCcw, Sparkles, TrendingUp, Info, ArrowRight, Share2 } from 'lucide-react';
 import { usePricePredictor } from '../hooks/usePricePredictor';
 import SHAPWaterfallChart from '../components/SHAPWaterfallChart';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 // ─── Design tokens (matches existing pages) ─────────────────────────────────
 const C = {
@@ -668,13 +669,13 @@ const ResultScreen = ({ result, formData, onReset, onListGem, onShare, shareMsg,
                     lineHeight: 1,
                     marginBottom: 12,
                 }}>
-                    ${result?.predictedPrice?.toLocaleString()}
+                    {formatPrice(result?.predictedPrice)}
                 </div>
 
                 <div style={{ color: C.muted, fontSize: '0.88rem', fontWeight: 600, marginBottom: 20 }}>
                     Confidence range:&nbsp;
                     <span style={{ color: C.text, fontWeight: 700 }}>
-                        ${result?.confidenceLow?.toLocaleString()} – ${result?.confidenceHigh?.toLocaleString()}
+                        {formatPrice(result?.confidenceLow)} – {formatPrice(result?.confidenceHigh)}
                     </span>
                 </div>
 
@@ -684,7 +685,7 @@ const ResultScreen = ({ result, formData, onReset, onListGem, onShare, shareMsg,
                         { label: 'Gem', value: `${gem?.emoji || ''} ${formData.gemFamily}` },
                         { label: 'Carat', value: `${formData.caratWeight} ct` },
                         { label: 'Confidence', value: `${confidence}%` },
-                        { label: 'Currency', value: 'USD' },
+                        { label: 'Currency', value: currency },
                     ].map(({ label, value }) => (
                         <div key={label} style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '0.65rem', color: C.dim, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
@@ -787,6 +788,7 @@ const ResultScreen = ({ result, formData, onReset, onListGem, onShare, shareMsg,
 // ════════════════════════════════════════════════════════════════════════════
 const AIPredictorPage = () => {
     const navigate = useNavigate();
+    const { formatPrice, currency } = useCurrency();
     const [searchParams] = useSearchParams();
 
     // Read URL params for pre-fill (e.g. from share link)

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { useCurrency } from '../../../context/CurrencyContext';
 import { useInitiateBuyNow } from '../hooks/useTransactions';
 import BuyNowModal from './BuyNowModal';
 import SimulatedPaymentModal from './SimulatedPaymentModal';
@@ -19,6 +20,7 @@ const BuyNowButton = ({ gem }) => {
   const [activeTransaction, setActiveTransaction] = useState(null);
   const mutation = useInitiateBuyNow();
   const { user, isAuthenticated } = useAuth();
+  const { formatPrice } = useCurrency();
   const navigate = useNavigate();
 
   if (gem.listing_type !== 'direct_sell') return null;
@@ -61,7 +63,7 @@ const BuyNowButton = ({ gem }) => {
         cursor: mutation.isPending ? 'not-allowed' : 'pointer',
         opacity: mutation.isPending ? 0.6 : 1, transition: 'opacity 0.2s',
       }}>
-        {mutation.isPending ? 'Processing...' : `Buy Now — $${price.toLocaleString()}`}
+        {mutation.isPending ? 'Processing...' : `Buy Now — ${formatPrice(price)}`}
       </button>
       <p style={{
         fontFamily: BODY, fontSize: '0.78rem', color: C.muted, marginTop: 8,

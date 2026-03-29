@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pencil, Trash2, ArrowUpCircle, Gavel } from 'lucide-react';
 import { deleteGem, publishGem } from '../../gems/services/gemsService';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 /* ─── Design tokens ─── */
 const C = {
@@ -34,6 +35,7 @@ const gridCols = '60px 1fr 110px 100px 110px 130px';
 
 const ListingRow = ({ gem, onRefresh }) => {
     const navigate = useNavigate();
+    const { formatPrice } = useCurrency();
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [toast, setToast] = useState(null);
     const [busy, setBusy] = useState(false);
@@ -137,7 +139,7 @@ const ListingRow = ({ gem, onRefresh }) => {
 
                 {/* Col 4: Price */}
                 <div style={{ fontFamily: BODY, fontSize: '0.88rem', fontWeight: 700, color: C.text }}>
-                    {gem.buy_now_price ? `$${Number(gem.buy_now_price).toLocaleString()}` : '\u2014'}
+                    {gem.buy_now_price ? formatPrice(gem.buy_now_price) : '\u2014'}
                 </div>
 
                 {/* Col 5: Date */}

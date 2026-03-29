@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getBids } from '../../auctions/services/auctionsService';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 /* ─── Design tokens ─── */
 const C = {
@@ -12,6 +13,7 @@ const DISPLAY = "'Cinzel',serif";
 const BODY = "'Jost','Inter',sans-serif";
 
 const AuctionBidHistory = ({ auctionId, auction }) => {
+    const { formatPrice } = useCurrency();
     const [bids, setBids] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showAll, setShowAll] = useState(false);
@@ -88,7 +90,7 @@ const AuctionBidHistory = ({ auctionId, auction }) => {
                     background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.15)',
                     fontFamily: BODY, fontSize: '0.82rem', fontWeight: 600, color: C.green,
                 }}>
-                    Auction won by {winnerBid.bidder?.full_name || 'Winner'} at ${Number(winnerBid.amount).toLocaleString()}
+                    Auction won by {winnerBid.bidder?.full_name || 'Winner'} at {formatPrice(winnerBid.amount)}
                 </div>
             )}
 
@@ -152,7 +154,7 @@ const AuctionBidHistory = ({ auctionId, auction }) => {
                                     fontFamily: DISPLAY, fontSize: '0.88rem',
                                     fontWeight: 700, color: isTop ? C.gold : C.text,
                                 }}>
-                                    ${Number(bid.amount).toLocaleString()}
+                                    {formatPrice(bid.amount)}
                                 </div>
 
                                 {/* Time */}

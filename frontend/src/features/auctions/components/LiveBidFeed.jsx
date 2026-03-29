@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
     white:  '#FFFFFF',
@@ -35,6 +36,7 @@ const avatarColor = (name) => {
  *   isConnected — bool (Realtime status)
  */
 const LiveBidFeed = ({ bids = [], isConnected }) => {
+    const { formatPrice } = useCurrency();
     return (
         <div style={{
             background:    C.white,
@@ -138,7 +140,7 @@ const LiveBidFeed = ({ bids = [], isConnected }) => {
                                         fontFamily: BODY,
                                         fontWeight: index === 0 ? 800 : 600,
                                     }}>
-                                        ${Number(bid.amount).toLocaleString()}
+                                        {formatPrice(bid.amount)}
                                     </div>
                                     {index === 0 && bid.is_winning && (
                                         <div style={{ color: C.gold, fontSize: '0.62rem', fontFamily: DISPLAY, fontWeight: 700, letterSpacing: '0.04em' }}>

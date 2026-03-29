@@ -12,6 +12,13 @@
     --text-primary: #1A1A2E;
     --text-muted: #6B6B7B;
     --border-subtle: rgba(201,168,76,0.2);
+
+    --color-parchment: #F0EDE8;
+    --color-navy: #1A4D8C;
+    --color-gold: #C4892A;
+    --color-navy-dark: #1A2B5C;
+    --font-display: 'Cormorant Garamond', serif;
+    --font-brand: 'Cinzel', serif;
 }
 
 /* ══ Luxury Typography Utilities ══ */

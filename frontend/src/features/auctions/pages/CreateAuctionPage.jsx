@@ -12,6 +12,7 @@ import { getGem } from '../../gems/services/gemsService';
 import { getMyGems } from '../../gems/services/gemsService';
 import { createAuction } from '../services/auctionsService';
 import { CheckCircle, AlertCircle, X, Clock, DollarSign, Gavel, ArrowRight, Gem, ChevronDown } from 'lucide-react';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 /* ── Design tokens (matching project palette) ── */
 const T = {
@@ -101,6 +102,7 @@ const focusProps = {
 const CreateAuctionPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { formatPrice } = useCurrency();
     const [searchParams] = useSearchParams();
     const preGemId = searchParams.get('gemId') || '';
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConfirmPayment } from '../hooks/useTransactions';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
   bg: '#F0EDE8', white: '#FFFFFF', sapphire: '#1A4D8C', gold: '#C4892A',
@@ -19,6 +20,7 @@ const inputStyle = {
 
 const SimulatedPaymentModal = ({ transaction, isOpen, onClose }) => {
   const [step, setStep] = useState('form');
+  const { formatPrice } = useCurrency();
   const [statusText, setStatusText] = useState('');
   const [cardNum, setCardNum] = useState('');
   const [expiry, setExpiry] = useState('');
@@ -95,7 +97,7 @@ const SimulatedPaymentModal = ({ transaction, isOpen, onClose }) => {
             </div>
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontFamily: SERIF, fontSize: '0.95rem', color: C.sapphire }}>{transaction.gem?.title}</div>
-              <div style={{ fontFamily: DISPLAY, fontSize: '1.4rem', fontWeight: 700, color: C.gold }}>${amount.toLocaleString()}</div>
+              <div style={{ fontFamily: DISPLAY, fontSize: '1.4rem', fontWeight: 700, color: C.gold }}>{formatPrice(amount)}</div>
             </div>
 
             {/* Card Details */}
@@ -125,7 +127,7 @@ const SimulatedPaymentModal = ({ transaction, isOpen, onClose }) => {
               width: '100%', background: C.sapphire, color: '#fff', border: 'none',
               borderRadius: 10, padding: '14px', fontFamily: BODY, fontSize: '0.92rem', fontWeight: 700, cursor: 'pointer',
             }}>
-              Pay ${amount.toLocaleString()}
+              Pay {formatPrice(amount)}
             </button>
           </>
         )}
@@ -153,7 +155,7 @@ const SimulatedPaymentModal = ({ transaction, isOpen, onClose }) => {
               Transaction ID: SIM-{transaction.id.slice(-8).toUpperCase()}
             </span>
             <span style={{ fontFamily: BODY, fontSize: '0.88rem', color: C.text }}>
-              Amount paid: ${amount.toLocaleString()}
+              Amount paid: {formatPrice(amount)}
             </span>
             <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
               <button onClick={() => navigate(`/transactions/${transaction.id}`)} style={{

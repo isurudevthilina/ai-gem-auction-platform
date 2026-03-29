@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
   bg: '#F0EDE8', white: '#FFFFFF', sapphire: '#1A4D8C', gold: '#C4892A',
@@ -10,6 +11,7 @@ const DISPLAY = "'Cinzel',serif";
 const BODY    = "'Jost','Inter',sans-serif";
 
 const BuyNowModal = ({ gem, isOpen, onClose, onConfirm, isLoading }) => {
+  const { formatPrice } = useCurrency();
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -81,19 +83,19 @@ const BuyNowModal = ({ gem, isOpen, onClose, onConfirm, isLoading }) => {
         <div style={{ margin: '16px 0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ fontFamily: BODY, fontSize: '0.85rem', color: C.muted }}>Gem Price</span>
-            <span style={{ fontFamily: BODY, fontSize: '0.85rem', color: C.text }}>${price.toLocaleString()}</span>
+            <span style={{ fontFamily: BODY, fontSize: '0.85rem', color: C.text }}>{formatPrice(price)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <div>
               <span style={{ fontFamily: BODY, fontSize: '0.85rem', color: C.muted }}>Platform Fee</span>
               <span style={{ fontFamily: BODY, fontSize: '0.72rem', color: C.faint, marginLeft: 6 }}>(Free during beta)</span>
             </div>
-            <span style={{ fontFamily: BODY, fontSize: '0.85rem', color: C.text }}>$0.00</span>
+            <span style={{ fontFamily: BODY, fontSize: '0.85rem', color: C.text }}>{formatPrice(0)}</span>
           </div>
           <div style={{ borderTop: `1px solid ${C.border}`, margin: '8px 0' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontFamily: BODY, fontSize: '0.92rem', fontWeight: 700, color: C.text }}>Total</span>
-            <span style={{ fontFamily: SERIF, fontSize: '1.2rem', fontWeight: 700, color: C.sapphire }}>${price.toLocaleString()}</span>
+            <span style={{ fontFamily: SERIF, fontSize: '1.2rem', fontWeight: 700, color: C.sapphire }}>{formatPrice(price)}</span>
           </div>
         </div>
 

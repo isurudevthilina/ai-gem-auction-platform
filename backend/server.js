@@ -11,7 +11,7 @@ const errorHandler = require('./src/middleware/errorHandler');
 
 // Test Supabase connection & ensure storage buckets
 testConnection();
-ensureStorageBuckets();
+ensureStorageBuckets().catch(err => console.error('❌ ensureStorageBuckets failed:', err.message));
 
 // Initialize Express app
 const app = express();

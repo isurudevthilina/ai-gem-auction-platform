@@ -4,6 +4,7 @@ import { Eye, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { getAuctions, deleteAuction } from '../../auctions/services/auctionsService';
 import AuctionBidHistory from './AuctionBidHistory';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 /* ─── Design tokens ─── */
 const C = {
@@ -55,6 +56,7 @@ const classifyAuction = (a) => {
 const MyAuctions = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { formatPrice } = useCurrency();
     const [auctions, setAuctions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState('all');
@@ -219,7 +221,7 @@ const MyAuctions = () => {
 
                                     {/* Price */}
                                     <div style={{ fontFamily: DISPLAY, fontSize: '1.1rem', fontWeight: 700, color: C.gold, flexShrink: 0, minWidth: 80, textAlign: 'right' }}>
-                                        ${Number(auction.current_price || 0).toLocaleString()}
+                                        {formatPrice(auction.current_price || 0)}
                                     </div>
 
                                     {/* Status badge */}

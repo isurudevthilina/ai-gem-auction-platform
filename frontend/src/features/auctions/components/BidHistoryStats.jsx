@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
     bg: '#F0EDE8', white: '#FFFFFF', sapphire: '#1A4D8C', gold: '#C4892A',
@@ -54,6 +55,7 @@ const CARDS = [
 ];
 
 const BidHistoryStats = ({ stats, isLoading }) => {
+    const { formatPrice } = useCurrency();
     const [cols, setCols] = useState(window.innerWidth > 700 ? 5 : 2);
 
     useEffect(() => {
@@ -82,7 +84,7 @@ const BidHistoryStats = ({ stats, isLoading }) => {
             {CARDS.map(({ key, label, Icon, color, isCurrency }) => {
                 const raw = stats[key];
                 const value = isCurrency
-                    ? (raw != null ? `$${parseFloat(raw).toLocaleString()}` : '\u2014')
+                    ? (raw != null ? formatPrice(raw) : '\u2014')
                     : (raw ?? 0);
 
                 const isWinning = key === 'currently_winning' && raw > 0;

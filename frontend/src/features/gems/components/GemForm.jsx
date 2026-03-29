@@ -89,32 +89,48 @@ const StepIndicator = ({ current }) => (
 /* ════════════════════════════════════════════════════════════════════════════
    GEM FORM COMPONENT
 ════════════════════════════════════════════════════════════════════════════ */
-const GemForm = ({ categories = [], onSubmit, isSubmitting = false }) => {
+const GemForm = ({ categories = [], onSubmit, isSubmitting = false, initialValues = null, isEditing = false }) => {
     const [step, setStep] = useState(1);
     const [imageFiles, setImageFiles] = useState([]);
-    const [imagePreviews, setImagePreviews] = useState([]);
+    const [imagePreviews, setImagePreviews] = useState(() => {
+        // For editing, pre-fill previews from existing images
+        if (initialValues?.images?.length) {
+            return initialValues.images.filter(u => typeof u === 'string' && !u.startsWith('model:'));
+        }
+        return [];
+    });
 
-    // Load draft from localStorage
+    // Load draft from localStorage (skip when editing)
     const savedDraft = (() => {
+        if (isEditing) return {};
         try { return JSON.parse(localStorage.getItem(DRAFT_KEY)) || {}; } catch { return {}; }
     })();
 
+    const defaults = {
+        gem_type: '', title: '', carat_weight: '', color: '', clarity: '',
+        cut: '', treatment: '', origin: '', description: '',
+        certification: '', listing_type: 'direct_sell',
+        buy_now_price: '', ...savedDraft,
+    };
+
+    // When editing, override defaults with initialValues
+    if (initialValues) {
+        Object.entries(initialValues).forEach(([k, v]) => {
+            if (v !== null && v !== undefined && k in defaults) defaults[k] = String(v);
+        });
+    }
+
     const { register, handleSubmit, control, watch, setValue, trigger, formState: { errors }, getValues } = useForm({
         resolver: zodResolver(fullSchema),
-        defaultValues: {
-            gem_type: '', title: '', carat_weight: '', color: '', clarity: '',
-            cut: '', treatment: '', origin: '', description: '',
-            certification: '', listing_type: 'direct_sell',
-            buy_now_price: '', ...savedDraft,
-        },
+        defaultValues: defaults,
         mode: 'onTouched',
     });
 
     const listingType = watch('listing_type');
 
-    // Auto-save draft on step change
+    // Auto-save draft on step change (skip when editing)
     useEffect(() => {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(getValues()));
+        if (!isEditing) localStorage.setItem(DRAFT_KEY, JSON.stringify(getValues()));
     }, [step]);
 
     // Auto-suggest title
@@ -145,7 +161,8 @@ const GemForm = ({ categories = [], onSubmit, isSubmitting = false }) => {
             ...values,
             category_id: cat?.id || null,
             imageFiles,
-            status: mode === 'auction_create' ? 'draft' : 'listed',
+            existingImages: isEditing ? initialValues?.images || [] : [],
+            status: isEditing ? undefined : (mode === 'auction_create' ? 'draft' : 'listed'),
         }, mode);
     };
 
@@ -189,7 +206,7 @@ const GemForm = ({ categories = [], onSubmit, isSubmitting = false }) => {
                             </button>
                         ) : (
                             <>
-                                <button type="button" onClick={() => handleFinalSubmit('draft')} disabled={isSubmitting}
+                                <button type="button" onClick={() => handleFinalSubmit(isEditing ? 'update' : 'draft')} disabled={isSubmitting}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: 8,
                                         padding: '12px 28px', background: T.sapphire, border: 'none', borderRadius: 8,
@@ -197,10 +214,10 @@ const GemForm = ({ categories = [], onSubmit, isSubmitting = false }) => {
                                         fontFamily: BODY, fontSize: '0.88rem', fontWeight: 700, color: '#fff',
                                         opacity: isSubmitting ? 0.7 : 1, transition: 'all 0.2s',
                                     }}>
-                                    {isSubmitting ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Saving gem...</> : 'Save as Draft'}
+                                    {isSubmitting ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> {isEditing ? 'Updating...' : 'Saving gem...'}</> : (isEditing ? 'Update Gem' : 'Save as Draft')}
                                 </button>
 
-                                {listingType === 'auction' && !isSubmitting && (
+                                {!isEditing && listingType === 'auction' && !isSubmitting && (
                                     <button type="button" onClick={() => handleFinalSubmit('auction_create')}
                                         style={{
                                             display: 'flex', alignItems: 'center', gap: 8,

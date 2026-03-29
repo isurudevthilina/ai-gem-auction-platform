@@ -3,8 +3,10 @@
  */
 import { Box, Sparkles } from 'lucide-react';
 import { T, SERIF, DISPLAY, BODY, labelStyle } from '../formTokens';
+import { useCurrency } from '../../../../context/CurrencyContext';
 
 const StepReview = ({ getValues, imageFiles, imagePreviews }) => {
+    const { formatPrice } = useCurrency();
     const v = getValues();
 
     const summaryRows = [
@@ -20,7 +22,7 @@ const StepReview = ({ getValues, imageFiles, imagePreviews }) => {
         { label: 'Listing Type',  value: v.listing_type === 'direct_sell' ? 'Direct Sale' : 'Auction' },
     ];
     if (v.listing_type === 'direct_sell' && v.buy_now_price) {
-        summaryRows.push({ label: 'Buy Now Price', value: `$${parseFloat(v.buy_now_price).toLocaleString()}` });
+        summaryRows.push({ label: 'Buy Now Price', value: formatPrice(v.buy_now_price) });
     }
 
     return (

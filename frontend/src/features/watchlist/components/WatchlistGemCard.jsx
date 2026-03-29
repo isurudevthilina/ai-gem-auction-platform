@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
     bg: '#F0EDE8', white: '#FFFFFF', sapphire: '#1A4D8C', gold: '#C4892A',
@@ -61,6 +62,7 @@ const getCountdownColor = (diff) => {
 const WatchlistGemCard = ({ item, folders, onRemove, onMove }) => {
     const [hover, setHover] = useState(false);
     const navigate = useNavigate();
+    const { formatPrice } = useCurrency();
 
     const gem = item.gem || {};
     const auction = item.auction;
@@ -152,19 +154,19 @@ const WatchlistGemCard = ({ item, folders, onRemove, onMove }) => {
                 <div style={{ marginTop: 'auto' }}>
                     {gem.listing_type === 'direct_sell' && gem.buy_now_price && (
                         <div style={{ fontFamily: BODY, fontSize: '0.85rem', color: C.gold, fontWeight: 700 }}>
-                            Buy Now: ${parseFloat(gem.buy_now_price).toLocaleString()}
+                            Buy Now: {formatPrice(gem.buy_now_price)}
                         </div>
                     )}
                     {gem.listing_type === 'auction' && auction && (
                         <div style={{ fontFamily: BODY, fontSize: '0.85rem', color: C.sapphire, fontWeight: 700 }}>
-                            Current Bid: ${parseFloat(auction.current_price).toLocaleString()}
+                            Current Bid: {formatPrice(auction.current_price)}
                         </div>
                     )}
                     {gem.predicted_price && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                             <StarSvg />
                             <span style={{ fontFamily: BODY, fontSize: '0.75rem', color: C.faint }}>
-                                AI Est: ${parseFloat(gem.predicted_price).toLocaleString()}
+                                AI Est: {formatPrice(gem.predicted_price)}
                             </span>
                         </div>
                     )}

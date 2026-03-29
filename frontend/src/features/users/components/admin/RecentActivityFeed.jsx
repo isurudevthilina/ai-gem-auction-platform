@@ -1,4 +1,5 @@
 import { useGetRecentActivity } from '../../hooks/useAdminStats';
+import { useCurrency } from '../../../../context/CurrencyContext';
 
 const C = {
   white: '#FFFFFF', sapphire: '#1A4D8C', gold: '#C4892A',
@@ -11,9 +12,9 @@ const BODY    = "'Jost','Inter',sans-serif";
 const TYPE_CFG = {
   new_user:       { bg: C.sapphire, icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/></svg>, fmt: (l, s) => `${l || 'User'} registered as ${s}` },
   new_listing:    { bg: C.teal,     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/></svg>, fmt: (l) => `New gem listed: ${l}` },
-  new_bid:        { bg: C.gold,     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>, fmt: (l) => `Bid of $${l} placed` },
+  new_bid:        { bg: C.gold,     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>, fmt: (l, s, fp) => `Bid of ${fp ? fp(l) : l} placed` },
   cert_submitted: { bg: C.amber,    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>, fmt: (l) => `${l} certificate submitted for review` },
-  txn_completed:  { bg: C.green,    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>, fmt: (l) => `Transaction completed — $${l}` },
+  txn_completed:  { bg: C.green,    icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>, fmt: (l, s, fp) => `Transaction completed — ${fp ? fp(l) : l}` },
 };
 
 const relativeTime = (dateStr) => {
@@ -29,6 +30,7 @@ const relativeTime = (dateStr) => {
 
 const RecentActivityFeed = () => {
   const { data: activity, isLoading } = useGetRecentActivity();
+  const { formatPrice } = useCurrency();
 
   const skeletonRow = (key) => (
     <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
@@ -86,7 +88,7 @@ const RecentActivityFeed = () => {
                     fontFamily: BODY, fontSize: '0.78rem', color: C.text,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
-                    {cfg.fmt(item.label, item.sub_label)}
+                    {cfg.fmt(item.label, item.sub_label, formatPrice)}
                   </div>
                 </div>
                 <div style={{ fontFamily: BODY, fontSize: '0.65rem', color: C.faint, whiteSpace: 'nowrap', flexShrink: 0 }}>

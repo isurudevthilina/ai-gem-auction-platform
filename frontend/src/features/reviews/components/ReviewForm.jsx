@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import StarRating from './StarRating';
 import { useCreateReview, useUpdateReview } from '../hooks/useReviews';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
   bg: '#F0EDE8', white: '#FFFFFF', sapphire: '#1A4D8C', gold: '#C4892A',
@@ -59,6 +60,7 @@ const ReviewForm = ({
   const updateMutation = useUpdateReview();
   const mutation = isEdit ? updateMutation : createMutation;
 
+  const { formatPrice } = useCurrency();
   const [commentFocused, setCommentFocused] = useState(false);
   const [showTips, setShowTips] = useState(false);
 
@@ -127,7 +129,7 @@ const ReviewForm = ({
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           {transactionAmount > 0 && (
             <div style={{ fontFamily: SERIF, fontSize: '1rem', fontWeight: 700, color: C.sapphire }}>
-              ${parseFloat(transactionAmount).toLocaleString()}
+              {formatPrice(transactionAmount)}
             </div>
           )}
           {transactionDate && (

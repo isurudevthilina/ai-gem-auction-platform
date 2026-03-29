@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGetTransaction } from '../hooks/useTransactions';
 import TransactionStatusBadge from '../components/TransactionStatusBadge';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
   bg: '#F0EDE8', white: '#FFFFFF', sapphire: '#1A4D8C', gold: '#C4892A',
@@ -14,6 +15,7 @@ const BODY    = "'Jost','Inter',sans-serif";
 const ReceiptPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { formatPrice } = useCurrency();
   const { data: txn, isLoading } = useGetTransaction(id);
 
   if (isLoading) {
@@ -147,16 +149,16 @@ const ReceiptPage = () => {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ fontFamily: BODY, fontSize: '0.85rem', color: C.muted }}>Gem Price</span>
-            <span style={{ fontFamily: BODY, fontSize: '0.85rem', color: C.text }}>${amt.toLocaleString()}</span>
+            <span style={{ fontFamily: BODY, fontSize: '0.85rem', color: C.text }}>{formatPrice(amt)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ fontFamily: BODY, fontSize: '0.85rem', color: C.muted }}>Platform Fee</span>
-            <span style={{ fontFamily: BODY, fontSize: '0.85rem', color: C.text }}>$0.00</span>
+            <span style={{ fontFamily: BODY, fontSize: '0.85rem', color: C.text }}>{formatPrice(0)}</span>
           </div>
           <div style={{ borderTop: `1px solid ${C.border}`, margin: '10px 0' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ fontFamily: BODY, fontSize: '0.95rem', fontWeight: 700, color: C.text }}>Total</span>
-            <span style={{ fontFamily: SERIF, fontSize: '1.3rem', fontWeight: 700, color: C.sapphire }}>${amt.toLocaleString()}</span>
+            <span style={{ fontFamily: SERIF, fontSize: '1.3rem', fontWeight: 700, color: C.sapphire }}>{formatPrice(amt)}</span>
           </div>
           {txn.payment_reference && (
             <div style={{ marginTop: 12, fontFamily: BODY, fontSize: '0.78rem', color: C.faint }}>

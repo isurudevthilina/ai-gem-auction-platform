@@ -137,6 +137,23 @@ const getUploadUrl = async (ext, sellerId) => {
     return { data: result };
 };
 
+const getDocumentUrl = async (certId, userId, role) => {
+    const cert = await repo.findById(certId);
+    if (!cert) throw new ApiError(404, 'Certificate not found');
+    if (role !== 'admin' && cert.seller_id !== userId) {
+        throw new ApiError(403, 'Access denied');
+    }
+
+    // Extract storage path from document_url
+    const marker = '/storage/v1/object/certificates/';
+    const idx = (cert.document_url || '').indexOf(marker);
+    if (idx === -1) throw new ApiError(400, 'Invalid document URL');
+    const storagePath = cert.document_url.slice(idx + marker.length);
+
+    const signedUrl = await repo.getSignedDownloadUrl(storagePath);
+    return { data: { url: signedUrl } };
+};
+
 module.exports = {
     uploadCertificate,
     getSellerCertificates,
@@ -148,4 +165,5 @@ module.exports = {
     deleteCertificate,
     getCertStats,
     getUploadUrl,
+    getDocumentUrl,
 };

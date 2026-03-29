@@ -8,6 +8,7 @@
  *   maxBarWidth - Max pixel width of the bar area (default 260)
  */
 import { useEffect, useState } from 'react';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
     positive: '#10b981',
@@ -23,6 +24,7 @@ const C = {
 };
 
 const SHAPWaterfallChart = ({ shapValues = [], maxBarWidth = 260 }) => {
+    const { formatPrice } = useCurrency();
     const [animated, setAnimated] = useState(false);
 
     // Trigger bar expansion animation on mount
@@ -111,7 +113,7 @@ const SHAPWaterfallChart = ({ shapValues = [], maxBarWidth = 260 }) => {
                                 letterSpacing: '-0.01em',
                                 fontVariantNumeric: 'tabular-nums',
                             }}>
-                                {sign}${Math.abs(item.contribution).toLocaleString()}
+                                {sign}{formatPrice(Math.abs(item.contribution))}
                             </div>
                         </div>
                     );

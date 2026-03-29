@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, ArrowRight, User, Gem } from 'lucide-react';
 import { useGlobalSearch } from '../hooks/useGlobalSearch';
+import { useCurrency } from '../../context/CurrencyContext';
 
 const FONT_SERIF = "'Cormorant Garamond', serif";
 const FONT_DISPLAY = "'Cinzel', serif";
@@ -24,6 +25,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
     const navigate = useNavigate();
     const inputRef = useRef(null);
     const { query, setQuery, gems, sellers, isLoading, hasResults } = useGlobalSearch();
+    const { formatPrice } = useCurrency();
     const [recent] = useState(getRecent);
 
     useEffect(() => {
@@ -183,7 +185,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
                                             </div>
                                             {gem.buy_now_price && (
                                                 <span style={{ fontFamily: FONT_BODY, fontSize: '0.82rem', fontWeight: 600, color: '#1A4D8C' }}>
-                                                    ${gem.buy_now_price.toLocaleString()}
+                                                    {formatPrice(gem.buy_now_price)}
                                                 </span>
                                             )}
                                             <ArrowRight size={14} color="#6B6B7B" />

@@ -1,597 +1,162 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, ChevronDown, ChevronUp, X, SlidersHorizontal, LayoutGrid, List, Clock, Award, Gavel } from 'lucide-react';
-import SellerRatingBadge from '../../reviews/components/SellerRatingBadge';
+import { Search, ChevronDown, X, LayoutGrid, List, SlidersHorizontal } from 'lucide-react';
+import FilterSidebar from '../../../shared/components/FilterSidebar';
+import GemGrid from '../components/GemGrid';
 import { getGems, getGemCategories } from '../services/gemsService';
 
-const T = {
-    bg: '#FDFAF6',
-    bgSoft: '#F5EFE6',
+/* ── Design Tokens ── */
+const C = {
+    parchment: '#F0EDE8',
+    navy: '#1A4D8C',
+    navyDark: '#1A2B5C',
+    gold: '#C4892A',
     white: '#FFFFFF',
-    gold: '#C9A84C',
-    goldSoft: 'rgba(201,168,76,0.12)',
-    goldBorder: 'rgba(201,168,76,0.28)',
-    navy: '#1B3A6B',
-    sapphire: '#2E6DB4',
     text: '#1A1A2E',
     muted: '#6B6B7B',
     faint: '#9A9AAB',
-    border: '#E8E4DC',
-    green: '#1A7A50',
-    greenSoft: 'rgba(26,122,80,0.1)',
-    shadow: '0 6px 24px rgba(26,26,46,0.08)',
-    shadowHover: '0 16px 44px rgba(26,26,46,0.14)',
+    border: 'rgba(26,77,140,0.12)',
 };
-
-const FONT_SERIF = "'Cormorant Garamond', serif";
-const FONT_DISPLAY = "'Cinzel', serif";
-const FONT_BODY = "'Jost', sans-serif";
+const BRAND = "'Cinzel', serif";
+const DISPLAY = "'Cormorant Garamond', serif";
 
 const SORT_OPTIONS = [
     { label: 'Newest First', sort: 'created_at', order: 'desc' },
     { label: 'Oldest First', sort: 'created_at', order: 'asc' },
     { label: 'Price: Low to High', sort: 'buy_now_price', order: 'asc' },
     { label: 'Price: High to Low', sort: 'buy_now_price', order: 'desc' },
-    { label: 'Carat: Low to High', sort: 'carat_weight', order: 'asc' },
-    { label: 'Carat: High to Low', sort: 'carat_weight', order: 'desc' },
+    { label: 'Carat: Light to Heavy', sort: 'carat_weight', order: 'asc' },
+    { label: 'Carat: Heavy to Light', sort: 'carat_weight', order: 'desc' },
     { label: 'Ending Soonest', sort: 'auction_end', order: 'asc' },
     { label: 'Most Bids', sort: 'bid_count', order: 'desc' },
+    { label: 'Top Rated Sellers', sort: 'seller_rating', order: 'desc' },
 ];
 
 const SHAPE_OPTIONS = [
-    'Round', 'Oval', 'Cushion', 'Pear', 'Emerald', 'Marquise',
-    'Princess', 'Radiant', 'Asscher', 'Heart', 'Trillion', 'Cabochon',
+    'Round', 'Oval', 'Cushion', 'Pear', 'Emerald Cut', 'Marquise',
+    'Princess', 'Radiant', 'Cabochon', 'Heart', 'Trillion', 'Baguette',
+    'Asscher', 'Mixed Cut',
 ];
 
 const CLARITY_OPTIONS = [
-    { value: 'Eye Clean', label: 'Eye Clean' },
+    { value: 'Eye Clean', label: 'Eye Clean', sub: 'Best clarity' },
     { value: 'Slightly Included (SI)', label: 'Slightly Included (SI)' },
     { value: 'Moderately Included (MI)', label: 'Moderately Included (MI)' },
     { value: 'Heavily Included (HI)', label: 'Heavily Included (HI)' },
     { value: 'Opaque', label: 'Opaque' },
 ];
 
-const COLOR_OPTIONS = [
-    { label: 'Blue', swatch: '#3B82F6' },
-    { label: 'Royal Blue', swatch: '#1D4ED8' },
-    { label: 'Cornflower Blue', swatch: '#6495ED' },
-    { label: 'Padparadscha', swatch: '#FF7F50' },
-    { label: 'Red', swatch: '#EF4444' },
-    { label: 'Pigeon Blood', swatch: '#B91C1C' },
-    { label: 'Pink', swatch: '#EC4899' },
-    { label: 'Green', swatch: '#22C55E' },
-    { label: 'Muzo Green', swatch: '#15803D' },
-    { label: 'Yellow', swatch: '#EAB308' },
-    { label: 'Orange', swatch: '#F97316' },
-    { label: 'Purple', swatch: '#A855F7' },
-    { label: 'White', swatch: '#E2E8F0', border: '#CBD5E1' },
-    { label: 'Black', swatch: '#0F172A' },
+const COLOR_SWATCHES = [
+    { value: 'Royal Blue', label: 'Royal Blue', swatch: '#1a4d8c' },
+    { value: 'Red', label: 'Red', swatch: '#9b2335' },
+    { value: 'Green', label: 'Green', swatch: '#1a6b3c' },
+    { value: 'Yellow', label: 'Yellow', swatch: '#d4a017' },
+    { value: 'Pink', label: 'Pink', swatch: '#e8a0b4' },
+    { value: 'Purple', label: 'Purple', swatch: '#6b4c9a' },
+    { value: 'Teal', label: 'Teal', swatch: '#0f6e56' },
+    { value: 'Orange', label: 'Orange', swatch: '#d4610f' },
+    { value: 'White', label: 'White', swatch: '#f5f5f5' },
 ];
 
 const ORIGIN_OPTIONS = [
-    'Sri Lanka', 'Myanmar', 'Colombia', 'Thailand', 'Madagascar',
-    'Tanzania', 'Brazil', 'India', 'Afghanistan', 'Mozambique',
-    'Kenya', 'Zambia', 'Australia',
+    { label: 'Sri Lanka (Ceylon)', value: 'Sri Lanka', dot: '#1a4d8c' },
+    { label: 'Myanmar', value: 'Myanmar' },
+    { label: 'Colombia', value: 'Colombia' },
+    { label: 'Thailand', value: 'Thailand' },
+    { label: 'Madagascar', value: 'Madagascar' },
+    { label: 'Tanzania', value: 'Tanzania' },
+    { label: 'Brazil', value: 'Brazil' },
+    { label: 'India', value: 'India' },
+    { label: 'Afghanistan', value: 'Afghanistan' },
+    { label: 'Mozambique', value: 'Mozambique' },
+    { label: 'Kenya', value: 'Kenya' },
+    { label: 'Zambia', value: 'Zambia' },
+    { label: 'Australia', value: 'Australia' },
 ];
 
 const TREATMENT_OPTIONS = [
-    { label: 'Unheated / None', value: 'None' },
+    { label: 'Unheated (No Treatment)', value: 'None', dot: '#16a34a' },
     { label: 'Heat Treated', value: 'Heat Treated' },
     { label: 'Fracture Filled', value: 'Fracture Filled' },
     { label: 'Irradiation', value: 'Irradiation' },
+    { label: 'Oiling', value: 'Oiling' },
+    { label: 'Diffusion', value: 'Diffusion' },
+    { label: 'Coating', value: 'Coating' },
+    { label: 'Dyeing', value: 'Dyeing' },
 ];
 
-const inputStyle = {
-    width: '100%',
-    background: T.white,
-    border: `1px solid ${T.border}`,
-    borderRadius: 8,
-    color: T.text,
-    fontSize: '0.82rem',
-    padding: '9px 12px',
-    outline: 'none',
-    boxSizing: 'border-box',
-    fontFamily: FONT_BODY,
-};
+const CARAT_PRESETS = [
+    { label: 'Under 1ct', min: '', max: '1' },
+    { label: '1-2ct', min: '1', max: '2' },
+    { label: '2-5ct', min: '2', max: '5' },
+    { label: '5ct+', min: '5', max: '' },
+];
 
-const DiamondPlaceholder = ({ size = 60, color = T.gold, opacity = 0.28 }) => (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden="true" style={{ opacity }}>
-        <path d="M16 22 24 12h16l8 10-16 30-16-30Z" stroke={color} strokeWidth="2.2" />
-        <path d="M16 22h32M24 12l8 10 8-10M32 22v30" stroke={color} strokeWidth="2" />
-    </svg>
-);
+const PRICE_PRESETS = [
+    { label: 'Under $500', min: '', max: '500' },
+    { label: '$500-1k', min: '500', max: '1000' },
+    { label: '$1k-5k', min: '1000', max: '5000' },
+    { label: '$5k+', min: '5000', max: '' },
+];
 
-const StatusIcon = ({ type }) => {
-    if (type === 'error') {
-        return (
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <circle cx="12" cy="12" r="9" stroke="#B45309" strokeWidth="1.8" />
-                <path d="M12 7v6" stroke="#B45309" strokeWidth="1.8" strokeLinecap="round" />
-                <circle cx="12" cy="16.5" r="1" fill="#B45309" />
-            </svg>
-        );
-    }
-
-    return <DiamondPlaceholder size={54} color={T.gold} opacity={0.55} />;
-};
-
-const Chip = ({ label, accent = false }) => (
-    <span
-        style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            padding: '3px 8px',
-            borderRadius: 999,
-            border: `1px solid ${accent ? 'rgba(46,109,180,0.18)' : T.border}`,
-            background: accent ? 'rgba(46,109,180,0.08)' : T.bgSoft,
-            color: accent ? T.sapphire : T.muted,
-            fontSize: '0.68rem',
-            fontWeight: 500,
-            fontFamily: FONT_BODY,
-        }}
-    >
-        {label}
-    </span>
-);
-
-const OptionRow = ({ label, value, active, onSelect, swatch, swatchBorder }) => (
-    <button
-        onClick={() => onSelect(active ? '' : value)}
-        style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            background: 'none',
-            border: 'none',
-            padding: '5px 0',
-            cursor: 'pointer',
-            textAlign: 'left',
-        }}
-    >
-        <span
-            style={{
-                width: 15,
-                height: 15,
-                borderRadius: 4,
-                border: active ? `2px solid ${T.gold}` : `1.5px solid ${T.border}`,
-                background: active ? T.gold : 'transparent',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-            }}
-        >
-            {active && (
-                <svg width="8" height="8" viewBox="0 0 10 10">
-                    <polyline
-                        points="1.5,5 4,7.5 8.5,2"
-                        stroke="#fff"
-                        strokeWidth="2"
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-                </svg>
-            )}
-        </span>
-        {swatch && (
-            <span
-                style={{
-                    width: 11,
-                    height: 11,
-                    borderRadius: '50%',
-                    background: swatch,
-                    border: `1px solid ${swatchBorder || 'rgba(0,0,0,0.08)'}`,
-                    flexShrink: 0,
-                }}
-            />
-        )}
-        <span
-            style={{
-                color: active ? T.navy : T.muted,
-                fontSize: '0.8rem',
-                fontWeight: active ? 600 : 400,
-                fontFamily: FONT_BODY,
-            }}
-        >
-            {label}
-        </span>
-    </button>
-);
-
-const RangeInputs = ({ minValue, maxValue, onMin, onMax, prefix = '', step = 1 }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ flex: 1, position: 'relative' }}>
-            {prefix && (
-                <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: T.faint, fontSize: '0.72rem', fontFamily: FONT_BODY }}>
-                    {prefix}
-                </span>
-            )}
-            <input
-                type="number"
-                min="0"
-                step={step}
-                value={minValue}
-                placeholder="Min"
-                onChange={(event) => onMin(event.target.value)}
-                style={{ ...inputStyle, paddingLeft: prefix ? 20 : 12 }}
-            />
-        </div>
-        <span style={{ color: T.faint, fontSize: '0.75rem' }}>-</span>
-        <div style={{ flex: 1, position: 'relative' }}>
-            {prefix && (
-                <span style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: T.faint, fontSize: '0.72rem', fontFamily: FONT_BODY }}>
-                    {prefix}
-                </span>
-            )}
-            <input
-                type="number"
-                min="0"
-                step={step}
-                value={maxValue}
-                placeholder="Max"
-                onChange={(event) => onMax(event.target.value)}
-                style={{ ...inputStyle, paddingLeft: prefix ? 20 : 12 }}
-            />
-        </div>
-    </div>
-);
-
-const FilterSection = ({ title, children, defaultOpen = true }) => {
-    const [open, setOpen] = useState(defaultOpen);
-
+/* ── Sort Dropdown (custom, not native) ── */
+const SortDropdown = ({ sortIndex, onChange }) => {
+    const [open, setOpen] = useState(false);
     return (
-        <div style={{ borderBottom: `1px solid ${T.border}` }}>
-            <button
-                onClick={() => setOpen((value) => !value)}
+        <div style={{ position: 'relative' }}>
+            <button onClick={() => setOpen(v => !v)}
                 style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '14px 0',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: T.navy,
-                    fontFamily: FONT_DISPLAY,
-                    fontSize: '0.68rem',
-                    fontWeight: 700,
-                    letterSpacing: '0.1em',
-                    textTransform: 'uppercase',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '8px 14px', borderRadius: 4, cursor: 'pointer',
+                    background: C.white, border: `0.5px solid ${C.border}`,
+                    fontFamily: BRAND, fontSize: 11, color: C.navy, letterSpacing: '0.02em',
                 }}
             >
-                {title}
-                {open ? <ChevronUp size={14} color={T.gold} /> : <ChevronDown size={14} color={T.muted} />}
+                Sort by: {SORT_OPTIONS[sortIndex].label}
+                <ChevronDown size={12} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
             </button>
-            <AnimatePresence initial={false}>
-                {open && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.18 }}
-                        style={{ overflow: 'hidden' }}
-                    >
-                        <div style={{ paddingBottom: 14 }}>{children}</div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {open && (
+                <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setOpen(false)} />
+                    <div style={{
+                        position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 50,
+                        background: C.white, border: `0.5px solid ${C.border}`, borderRadius: 4,
+                        boxShadow: '0 8px 24px rgba(26,77,140,0.1)', minWidth: 200, overflow: 'hidden',
+                    }}>
+                        {SORT_OPTIONS.map((o, i) => (
+                            <button key={i}
+                                onClick={() => { onChange(i); setOpen(false); }}
+                                style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    width: '100%', padding: '10px 14px', border: 'none', cursor: 'pointer',
+                                    background: 'transparent', fontFamily: DISPLAY, fontSize: 14,
+                                    color: sortIndex === i ? C.navy : C.text,
+                                    fontWeight: sortIndex === i ? 600 : 400,
+                                    transition: 'background 0.1s',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(26,77,140,0.04)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                            >
+                                {o.label}
+                                {sortIndex === i && <span style={{ color: C.gold }}>✓</span>}
+                            </button>
+                        ))}
+                    </div>
+                </>
+            )}
         </div>
     );
 };
 
-const AuctionBadge = ({ auction }) => {
-    const [timeLeft, setTimeLeft] = useState('');
-    useEffect(() => {
-        if (!auction?.end_time) return;
-        const tick = () => {
-            const diff = new Date(auction.end_time) - Date.now();
-            if (diff <= 0) { setTimeLeft('Ended'); return; }
-            const h = Math.floor(diff / 3600000);
-            const m = Math.floor((diff % 3600000) / 60000);
-            setTimeLeft(h > 0 ? `${h}h ${m}m` : `${m}m`);
-        };
-        tick();
-        const id = setInterval(tick, 60000);
-        return () => clearInterval(id);
-    }, [auction?.end_time]);
-    if (!timeLeft) return null;
-    return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 6, background: 'rgba(26,122,80,0.12)', border: '1px solid rgba(26,122,80,0.28)', color: '#1A7A50', fontSize: '0.56rem', fontWeight: 700, fontFamily: FONT_DISPLAY, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-            <Clock size={10} /> {timeLeft}
-        </span>
-    );
-};
-
-const GemCard = ({ gem, onClick, listView }) => {
-    const [hovered, setHovered] = useState(false);
-    const price = gem.buy_now_price || gem.predicted_price;
-    const isUnheated = gem.treatment === 'None' || gem.treatment == null;
-    // Supabase returns a single object (not array) when FK has UNIQUE constraint
-    const auctionsArr = gem.auctions ? (Array.isArray(gem.auctions) ? gem.auctions : [gem.auctions]) : [];
-    const activeAuction = auctionsArr.find(a => a.status === 'active');
-    const certsArr = gem.certificates ? (Array.isArray(gem.certificates) ? gem.certificates : [gem.certificates]) : [];
-    const certVerified = certsArr.some(c => c.status === 'verified');
-    const certPending = !certVerified && certsArr.some(c => c.status === 'pending');
-    const bidCount = activeAuction?.bid_count || 0;
-
-    if (listView) {
-        return (
-            <div
-                onClick={onClick}
-                onMouseEnter={() => setHovered(true)}
-                onMouseLeave={() => setHovered(false)}
-                style={{
-                    background: T.white,
-                    border: `1px solid ${hovered ? T.goldBorder : T.border}`,
-                    borderRadius: 14,
-                    overflow: 'hidden',
-                    cursor: 'pointer',
-                    boxShadow: hovered ? T.shadowHover : T.shadow,
-                    transition: 'all 0.22s ease',
-                    display: 'flex',
-                    gap: 0,
-                }}
-            >
-                <div style={{ width: 180, minHeight: 140, flexShrink: 0, background: `radial-gradient(circle at 60% 35%, rgba(201,168,76,0.11) 0%, ${T.bgSoft} 100%)`, position: 'relative', overflow: 'hidden' }}>
-                    {gem.images?.find(u => !u.startsWith('model:')) ? (
-                        <img src={gem.images.find(u => !u.startsWith('model:'))} alt={gem.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <DiamondPlaceholder size={48} color={T.gold} opacity={0.28} />
-                        </div>
-                    )}
-                </div>
-                <div style={{ flex: 1, padding: '14px 18px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <h3 style={{ margin: 0, color: T.navy, fontFamily: FONT_SERIF, fontSize: '1.05rem', fontWeight: 700, lineHeight: 1.2 }}>{gem.title}</h3>
-                        {certVerified && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 6, background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.18)', color: '#16a34a', fontSize: '0.52rem', fontWeight: 700, fontFamily: FONT_DISPLAY, letterSpacing: '0.05em', textTransform: 'uppercase' }}><Award size={9} /> Certified</span>}
-                        {certPending && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 6, background: 'rgba(180,83,9,0.08)', border: '1px solid rgba(180,83,9,0.18)', color: '#92400e', fontSize: '0.52rem', fontWeight: 700, fontFamily: FONT_DISPLAY, letterSpacing: '0.05em', textTransform: 'uppercase' }}><Award size={9} /> Cert Pending</span>}
-                        {activeAuction && <AuctionBadge auction={activeAuction} />}
-                        {bidCount > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 6, background: T.goldSoft, border: `1px solid ${T.goldBorder}`, color: '#8A640D', fontSize: '0.52rem', fontWeight: 700, fontFamily: FONT_DISPLAY, letterSpacing: '0.05em', textTransform: 'uppercase' }}><Gavel size={9} /> {bidCount} bids</span>}
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                        {gem.carat_weight && <Chip label={`${gem.carat_weight} ct`} />}
-                        {gem.cut && <Chip label={gem.cut} />}
-                        {gem.color && <Chip label={gem.color} accent />}
-                        {gem.origin && <Chip label={gem.origin} />}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 2 }}>
-                        {price && <span style={{ color: T.gold, fontFamily: FONT_SERIF, fontSize: '1.15rem', fontWeight: 700 }}>${Number(price).toLocaleString()}</span>}
-                        {gem.predicted_price && gem.buy_now_price && <span style={{ color: T.faint, fontSize: '0.72rem', fontFamily: FONT_BODY }}>AI est. ${Number(gem.predicted_price).toLocaleString()}</span>}
-                        {gem.seller_id && <SellerRatingBadge sellerId={gem.seller_id} />}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div
-            onClick={onClick}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-            style={{
-                background: T.white,
-                border: `1px solid ${hovered ? T.goldBorder : T.border}`,
-                borderRadius: 14,
-                overflow: 'hidden',
-                cursor: 'pointer',
-                boxShadow: hovered ? T.shadowHover : T.shadow,
-                transition: 'all 0.22s ease',
-                transform: hovered ? 'translateY(-4px)' : 'translateY(0)',
-            }}
-        >
-            <div
-                style={{
-                    height: 220,
-                    background: `radial-gradient(circle at 60% 35%, rgba(201,168,76,0.11) 0%, ${T.bgSoft} 100%)`,
-                    position: 'relative',
-                    overflow: 'hidden',
-                }}
-            >
-                {gem.images?.find(u => !u.startsWith('model:')) ? (
-                    <img
-                        src={gem.images.find(u => !u.startsWith('model:'))}
-                        alt={gem.title}
-                        style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            transform: hovered ? 'scale(1.05)' : 'scale(1)',
-                            transition: 'transform 0.35s ease',
-                        }}
-                    />
-                ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <DiamondPlaceholder size={72} color={T.gold} opacity={0.28} />
-                    </div>
-                )}
-                {gem.category?.name && (
-                    <span
-                        style={{
-                            position: 'absolute',
-                            top: 10,
-                            left: 10,
-                            background: 'rgba(255,255,255,0.92)',
-                            border: `1px solid ${T.goldBorder}`,
-                            borderRadius: 6,
-                            padding: '4px 9px',
-                            color: T.navy,
-                            fontFamily: FONT_DISPLAY,
-                            fontSize: '0.56rem',
-                            fontWeight: 700,
-                            letterSpacing: '0.07em',
-                            textTransform: 'uppercase',
-                        }}
-                    >
-                        {gem.category.name}
-                    </span>
-                )}
-                {isUnheated && (
-                    <span
-                        style={{
-                            position: 'absolute',
-                            top: 10,
-                            right: 10,
-                            background: T.greenSoft,
-                            border: `1px solid rgba(26,122,80,0.28)`,
-                            borderRadius: 6,
-                            padding: '4px 9px',
-                            color: T.green,
-                            fontFamily: FONT_DISPLAY,
-                            fontSize: '0.52rem',
-                            fontWeight: 700,
-                            letterSpacing: '0.07em',
-                            textTransform: 'uppercase',
-                        }}
-                    >
-                        Unheated
-                    </span>
-                )}
-                {certVerified && (
-                    <span style={{ position: 'absolute', bottom: 10, left: 10, display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.92)', border: '1px solid rgba(22,163,74,0.22)', color: '#16a34a', fontSize: '0.52rem', fontWeight: 700, fontFamily: FONT_DISPLAY, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                        <Award size={9} /> Certified
-                    </span>
-                )}
-                {certPending && (
-                    <span style={{ position: 'absolute', bottom: 10, left: 10, display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.92)', border: '1px solid rgba(180,83,9,0.22)', color: '#92400e', fontSize: '0.52rem', fontWeight: 700, fontFamily: FONT_DISPLAY, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                        <Award size={9} /> Cert Pending
-                    </span>
-                )}
-                {activeAuction && (
-                    <span style={{ position: 'absolute', bottom: 10, right: 10 }}>
-                        <AuctionBadge auction={activeAuction} />
-                    </span>
-                )}
-            </div>
-
-            <div style={{ padding: '15px 16px 18px' }}>
-                <h3
-                    style={{
-                        margin: 0,
-                        color: T.navy,
-                        fontFamily: FONT_SERIF,
-                        fontSize: '1.12rem',
-                        fontWeight: 700,
-                        lineHeight: 1.2,
-                    }}
-                >
-                    {gem.title}
-                </h3>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 9 }}>
-                    {gem.carat_weight && <Chip label={`${gem.carat_weight} ct`} />}
-                    {gem.cut && <Chip label={gem.cut} />}
-                    {gem.clarity && <Chip label={gem.clarity} />}
-                    {gem.color && <Chip label={gem.color} accent />}
-                </div>
-
-                {gem.origin && (
-                    <div style={{ marginTop: 8, color: T.muted, fontSize: '0.74rem', fontFamily: FONT_BODY }}>
-                        Origin: {gem.origin}
-                    </div>
-                )}
-
-                {(bidCount > 0 || gem.seller_id) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                        {bidCount > 0 && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 6, background: T.goldSoft, border: `1px solid ${T.goldBorder}`, color: '#8A640D', fontSize: '0.52rem', fontWeight: 700, fontFamily: FONT_DISPLAY, letterSpacing: '0.05em', textTransform: 'uppercase' }}><Gavel size={9} /> {bidCount} bids</span>}
-                        {gem.seller_id && <SellerRatingBadge sellerId={gem.seller_id} />}
-                    </div>
-                )}
-
-                <div style={{ height: 1, background: T.border, margin: '13px 0 12px' }} />
-
-                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
-                    <div>
-                        {price ? (
-                            <>
-                                <div style={{ color: T.faint, fontFamily: FONT_DISPLAY, fontSize: '0.54rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                                    {gem.buy_now_price ? 'Price' : 'Est. Value'}
-                                </div>
-                                <div style={{ color: T.gold, fontFamily: FONT_SERIF, fontSize: '1.45rem', fontWeight: 700, lineHeight: 1.1 }}>
-                                    ${Number(price).toLocaleString()}
-                                </div>
-                                {gem.predicted_price && gem.buy_now_price && (
-                                    <div style={{ color: T.faint, fontSize: '0.68rem', fontFamily: FONT_BODY, marginTop: 2 }}>
-                                        AI est. ${Number(gem.predicted_price).toLocaleString()}
-                                    </div>
-                                )}
-                            </>
-                        ) : (
-                            <div style={{ color: T.muted, fontSize: '0.8rem', fontFamily: FONT_BODY }}>
-                                Contact Seller
-                            </div>
-                        )}
-                    </div>
-
-                    <button
-                        onClick={(event) => {
-                            event.stopPropagation();
-                            onClick();
-                        }}
-                        style={{
-                            padding: '8px 13px',
-                            borderRadius: 8,
-                            border: `1.5px solid ${T.navy}`,
-                            background: hovered ? T.navy : 'transparent',
-                            color: hovered ? T.white : T.navy,
-                            fontFamily: FONT_DISPLAY,
-                            fontSize: '0.58rem',
-                            fontWeight: 700,
-                            letterSpacing: '0.08em',
-                            textTransform: 'uppercase',
-                            cursor: 'pointer',
-                            transition: 'all 0.18s ease',
-                        }}
-                    >
-                        View
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const SkeletonCard = () => (
-    <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, overflow: 'hidden', boxShadow: T.shadow }}>
-        <div style={{ height: 220, background: T.bgSoft, animation: 'gemPulse 1.4s ease-in-out infinite' }} />
-        <div style={{ padding: '15px 16px 18px' }}>
-            <div style={{ height: 18, width: '68%', background: T.bgSoft, borderRadius: 4, animation: 'gemPulse 1.4s ease-in-out infinite' }} />
-            <div style={{ height: 12, width: '48%', background: T.bgSoft, borderRadius: 4, marginTop: 10, animation: 'gemPulse 1.4s ease-in-out infinite' }} />
-            <div style={{ height: 12, width: '35%', background: T.bgSoft, borderRadius: 4, marginTop: 8, animation: 'gemPulse 1.4s ease-in-out infinite' }} />
-        </div>
-    </div>
-);
-
-const PageButton = ({ children, disabled, onClick }) => (
-    <button
-        disabled={disabled}
-        onClick={onClick}
-        style={{
-            padding: '8px 14px',
-            borderRadius: 8,
-            border: `1px solid ${T.border}`,
-            background: disabled ? T.bgSoft : T.white,
-            color: disabled ? T.faint : T.muted,
-            fontFamily: FONT_BODY,
-            fontSize: '0.8rem',
-            fontWeight: 600,
-            cursor: disabled ? 'not-allowed' : 'pointer',
-        }}
-    >
-        {children}
-    </button>
-);
-
-
+/* ═══════════════════════════════════════════════════
+   GemListPage — Complete Vostok-inspired Redesign
+═══════════════════════════════════════════════════ */
 const GemListPage = () => {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
 
+    /* ── All existing state preserved ── */
     const [gems, setGems] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -615,9 +180,12 @@ const GemListPage = () => {
     const [search, setSearch] = useState(() => searchParams.get('q') || '');
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
     const [viewMode, setViewMode] = useState(() => localStorage.getItem('gemViewMode') || 'grid');
+    const [certifiedOnly, setCertifiedOnly] = useState(false);
+    const [verifiedSellers, setVerifiedSellers] = useState(false);
 
     const LIMIT = 16;
 
+    /* ── Data fetching (unchanged) ── */
     useEffect(() => {
         getGemCategories()
             .then((response) => setCategories(response.data || []))
@@ -658,7 +226,6 @@ const GemListPage = () => {
     const fetchCatalog = useCallback(async () => {
         setLoading(true);
         setError(null);
-
         try {
             const { sort, order } = SORT_OPTIONS[sortIndex];
             const response = await getGems({
@@ -678,7 +245,6 @@ const GemListPage = () => {
                 sort,
                 order,
             });
-
             setGems(response.data || []);
             setTotalPages(response.pagination?.totalPages || 1);
             setTotal(response.pagination?.total || 0);
@@ -694,274 +260,427 @@ const GemListPage = () => {
     }, [fetchCatalog]);
 
     const clearAll = () => {
-        setCategoryId('');
-        setCut('');
-        setColor('');
-        setClarity('');
-        setOrigin('');
-        setTreatment('');
-        setMinPrice('');
-        setMaxPrice('');
-        setMinCarat('');
-        setMaxCarat('');
+        setCategoryId(''); setCut(''); setColor(''); setClarity('');
+        setOrigin(''); setTreatment(''); setMinPrice(''); setMaxPrice('');
+        setMinCarat(''); setMaxCarat(''); setCertifiedOnly(false); setVerifiedSellers(false);
     };
 
-    const activeCount = [categoryId, cut, color, clarity, origin, treatment, minPrice, maxPrice, minCarat, maxCarat].filter(Boolean).length;
+    const activeCount = [categoryId, cut, color, clarity, origin, treatment, minPrice, maxPrice, minCarat, maxCarat, certifiedOnly, verifiedSellers].filter(Boolean).length;
 
-    const activeTags = [
-        ...(categoryId ? [{ label: categories.find((item) => item.id === categoryId)?.name || 'Stone Type', clear: () => setCategoryId('') }] : []),
-        ...(cut ? [{ label: cut, clear: () => setCut('') }] : []),
-        ...(color ? [{ label: color, clear: () => setColor('') }] : []),
-        ...(clarity ? [{ label: clarity, clear: () => setClarity('') }] : []),
-        ...(origin ? [{ label: origin, clear: () => setOrigin('') }] : []),
-        ...(treatment ? [{ label: treatment, clear: () => setTreatment('') }] : []),
-        ...((minPrice || maxPrice) ? [{ label: `$${minPrice || '0'}-$${maxPrice || 'max'}`, clear: () => { setMinPrice(''); setMaxPrice(''); } }] : []),
-        ...((minCarat || maxCarat) ? [{ label: `${minCarat || '0'}-${maxCarat || 'max'} ct`, clear: () => { setMinCarat(''); setMaxCarat(''); } }] : []),
-    ];
+    const caratPresetIdx = CARAT_PRESETS.findIndex(p => p.min === minCarat && p.max === maxCarat);
+    const pricePresetIdx = PRICE_PRESETS.findIndex(p => p.min === minPrice && p.max === maxPrice);
 
-    const FiltersBody = () => (
-        <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, marginBottom: 4, borderBottom: `2px solid ${T.goldBorder}` }}>
-                <span style={{ color: T.navy, fontFamily: FONT_DISPLAY, fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-                    Filters
-                </span>
-                {activeCount > 0 && (
-                    <button
-                        onClick={clearAll}
-                        style={{ background: T.goldSoft, border: `1px solid ${T.goldBorder}`, color: '#8A640D', borderRadius: 6, padding: '4px 9px', fontSize: '0.72rem', fontWeight: 600, fontFamily: FONT_BODY, cursor: 'pointer' }}
-                    >
-                        Clear ({activeCount})
-                    </button>
-                )}
-            </div>
-
-            <FilterSection title="Stone Type">
-                {categories.map((category) => (
-                    <OptionRow key={category.id} label={category.name} value={category.id} active={categoryId === category.id} onSelect={setCategoryId} />
+    /* ── Filters Body (shared between sidebar & mobile drawer) ── */
+    const FiltersContent = () => (
+        <>
+            <FilterSidebar.Section label="Stone Type" defaultOpen>
+                {categories.map((cat) => (
+                    <FilterSidebar.Checkbox key={cat.id}
+                        checked={categoryId === cat.id}
+                        onChange={() => setCategoryId(categoryId === cat.id ? '' : cat.id)}
+                        label={cat.name}
+                    />
                 ))}
-            </FilterSection>
+            </FilterSidebar.Section>
 
-            <FilterSection title="Shape / Cut" defaultOpen={false}>
-                {SHAPE_OPTIONS.map((shape) => (
-                    <OptionRow key={shape} label={shape} value={shape} active={cut === shape} onSelect={setCut} />
+            <FilterSidebar.Section label="Shape / Cut" defaultOpen={false}>
+                {SHAPE_OPTIONS.map(s => (
+                    <FilterSidebar.Checkbox key={s}
+                        checked={cut === s}
+                        onChange={() => setCut(cut === s ? '' : s)}
+                        label={s}
+                    />
                 ))}
-            </FilterSection>
+            </FilterSidebar.Section>
 
-            <FilterSection title="Colour" defaultOpen={false}>
-                {COLOR_OPTIONS.map((option) => (
-                    <OptionRow key={option.label} label={option.label} value={option.label} active={color === option.label} onSelect={setColor} swatch={option.swatch} swatchBorder={option.border} />
+            <FilterSidebar.Section label="Colour" defaultOpen={false}>
+                <FilterSidebar.ColorSwatches
+                    colors={COLOR_SWATCHES}
+                    active={color}
+                    onSelect={setColor}
+                />
+            </FilterSidebar.Section>
+
+            <FilterSidebar.Section label="Clarity Grade" defaultOpen={false}>
+                {CLARITY_OPTIONS.map(o => (
+                    <FilterSidebar.Radio key={o.value}
+                        checked={clarity === o.value}
+                        onChange={() => setClarity(clarity === o.value ? '' : o.value)}
+                        label={o.label}
+                        sub={o.sub}
+                    />
                 ))}
-            </FilterSection>
+            </FilterSidebar.Section>
 
-            <FilterSection title="Clarity Grade" defaultOpen={false}>
-                {CLARITY_OPTIONS.map((option) => (
-                    <OptionRow key={option.value} label={option.label} value={option.value} active={clarity === option.value} onSelect={setClarity} />
+            <FilterSidebar.Section label="Carat Weight" defaultOpen={false}>
+                <FilterSidebar.RangeInputs
+                    min={minCarat} max={maxCarat}
+                    onMin={setMinCarat} onMax={setMaxCarat}
+                    suffix="ct" step={0.1}
+                />
+                <FilterSidebar.PresetPills
+                    presets={CARAT_PRESETS}
+                    activeIdx={caratPresetIdx}
+                    onSelect={i => { setMinCarat(CARAT_PRESETS[i].min); setMaxCarat(CARAT_PRESETS[i].max); }}
+                />
+            </FilterSidebar.Section>
+
+            <FilterSidebar.Section label="Price (USD)" defaultOpen={false}>
+                <FilterSidebar.RangeInputs
+                    min={minPrice} max={maxPrice}
+                    onMin={setMinPrice} onMax={setMaxPrice}
+                    prefix="$"
+                />
+                <FilterSidebar.PresetPills
+                    presets={PRICE_PRESETS}
+                    activeIdx={pricePresetIdx}
+                    onSelect={i => { setMinPrice(PRICE_PRESETS[i].min); setMaxPrice(PRICE_PRESETS[i].max); }}
+                />
+            </FilterSidebar.Section>
+
+            <FilterSidebar.Section label="Origin / Source" defaultOpen={false}>
+                {ORIGIN_OPTIONS.map(o => (
+                    <FilterSidebar.Checkbox key={o.value}
+                        checked={origin === o.value}
+                        onChange={() => setOrigin(origin === o.value ? '' : o.value)}
+                        label={o.label}
+                        dot={o.dot}
+                    />
                 ))}
-            </FilterSection>
+            </FilterSidebar.Section>
 
-            <FilterSection title="Carat Weight" defaultOpen={false}>
-                <RangeInputs minValue={minCarat} maxValue={maxCarat} onMin={setMinCarat} onMax={setMaxCarat} step={0.1} />
-            </FilterSection>
-
-            <FilterSection title="Price (USD)" defaultOpen={false}>
-                <RangeInputs minValue={minPrice} maxValue={maxPrice} onMin={setMinPrice} onMax={setMaxPrice} prefix="$" />
-            </FilterSection>
-
-            <FilterSection title="Origin / Source" defaultOpen={false}>
-                {ORIGIN_OPTIONS.map((item) => (
-                    <OptionRow key={item} label={item} value={item} active={origin === item} onSelect={setOrigin} />
+            <FilterSidebar.Section label="Treatment" defaultOpen={false}>
+                {TREATMENT_OPTIONS.map(o => (
+                    <FilterSidebar.Checkbox key={o.value}
+                        checked={treatment === o.value}
+                        onChange={() => setTreatment(treatment === o.value ? '' : o.value)}
+                        label={o.label}
+                        dot={o.dot}
+                    />
                 ))}
-            </FilterSection>
+            </FilterSidebar.Section>
 
-            <FilterSection title="Treatment" defaultOpen={false}>
-                {TREATMENT_OPTIONS.map((option) => (
-                    <OptionRow key={option.value} label={option.label} value={option.value} active={treatment === option.value} onSelect={setTreatment} />
-                ))}
-            </FilterSection>
-        </div>
+            <FilterSidebar.Section label="Additional" defaultOpen={false}>
+                <FilterSidebar.Toggle
+                    checked={certifiedOnly}
+                    onChange={() => setCertifiedOnly(v => !v)}
+                    label="Certified Gems Only"
+                    sub="GIA/GRS verified"
+                />
+                <FilterSidebar.Toggle
+                    checked={verifiedSellers}
+                    onChange={() => setVerifiedSellers(v => !v)}
+                    label="Verified Sellers Only"
+                />
+            </FilterSidebar.Section>
+        </>
     );
 
     return (
-        <div style={{ minHeight: '100vh', background: T.bg, color: T.text, fontFamily: FONT_BODY }}>
-
-            <div style={{ maxWidth: 1380, margin: '0 auto', padding: '24px 28px 0' }}>
-                <nav style={{ display: 'flex', alignItems: 'center', gap: 6, color: T.muted, fontSize: '0.74rem', fontFamily: FONT_BODY }}>
-                    <span onClick={() => navigate('/')} style={{ color: T.sapphire, cursor: 'pointer' }}>Home</span>
-                    <span>/</span>
-                    <span style={{ color: T.text, fontWeight: 600 }}>Gems Catalogue</span>
-                </nav>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginTop: 16 }}>
-                    <div>
-                        <h1 style={{ margin: 0, color: T.navy, fontFamily: FONT_SERIF, fontSize: 'clamp(1.8rem, 3vw, 2.6rem)', fontWeight: 700, lineHeight: 1 }}>
-                            Precious Gems <em style={{ color: T.gold, fontStyle: 'italic' }}>Collection</em>
-                        </h1>
-                        <p style={{ margin: '6px 0 0', color: T.muted, fontSize: '0.82rem' }}>
-                            {loading ? 'Loading...' : `${total.toLocaleString()} gems available`}
-                        </p>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                        <div style={{ position: 'relative' }}>
-                            <Search size={14} color={T.muted} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
-                            <input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search gems..." style={{ ...inputStyle, paddingLeft: 31, width: 220 }} />
-                        </div>
-
-                        <div style={{ position: 'relative' }}>
-                            <select value={sortIndex} onChange={(event) => setSortIndex(Number(event.target.value))} style={{ ...inputStyle, width: 190, appearance: 'none', WebkitAppearance: 'none', cursor: 'pointer', paddingRight: 34 }}>
-                                {SORT_OPTIONS.map((option, index) => (
-                                    <option key={index} value={index}>{option.label}</option>
-                                ))}
-                            </select>
-                            <ChevronDown size={14} color={T.muted} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-                        </div>
-
-                        <button
-                            className="gem-mobile-filter-toggle"
-                            onClick={() => setMobileFiltersOpen(true)}
-                            style={{ display: 'none', alignItems: 'center', gap: 7, padding: '9px 14px', borderRadius: 8, border: `1px solid ${activeCount ? T.goldBorder : T.border}`, background: activeCount ? T.goldSoft : T.white, color: activeCount ? T.navy : T.muted, fontFamily: FONT_DISPLAY, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}
-                        >
-                            <SlidersHorizontal size={13} /> Filters{activeCount > 0 ? ` (${activeCount})` : ''}
-                        </button>
-
-                        <div style={{ display: 'flex', border: `1px solid ${T.border}`, borderRadius: 8, overflow: 'hidden' }}>
-                            <button onClick={() => setViewMode('grid')} style={{ padding: '8px 10px', background: viewMode === 'grid' ? T.navy : T.white, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                                <LayoutGrid size={14} color={viewMode === 'grid' ? T.white : T.muted} />
-                            </button>
-                            <button onClick={() => setViewMode('list')} style={{ padding: '8px 10px', background: viewMode === 'list' ? T.navy : T.white, border: 'none', borderLeft: `1px solid ${T.border}`, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                                <List size={14} color={viewMode === 'list' ? T.white : T.muted} />
-                            </button>
-                        </div>
-                    </div>
+        <div style={{ minHeight: '100vh', background: C.parchment }}>
+            {/* ═══ HERO BANNER ═══ */}
+            <div style={{
+                position: 'relative', overflow: 'hidden',
+                background: `linear-gradient(135deg, ${C.navy} 0%, ${C.navyDark} 100%)`,
+                padding: '80px 40px 60px', textAlign: 'center',
+            }}>
+                {/* Dot grid decoration */}
+                <div style={{
+                    position: 'absolute', inset: 0, opacity: 0.08,
+                    backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px)',
+                    backgroundSize: '24px 24px',
+                }} />
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                    <span style={{
+                        fontFamily: BRAND, fontSize: 11, letterSpacing: '0.2em',
+                        textTransform: 'uppercase', color: C.gold,
+                    }}>GemBid LK</span>
+                    <h1 style={{ margin: '12px 0 0', fontSize: 'clamp(28px, 4vw, 42px)', fontWeight: 400, lineHeight: 1.1 }}>
+                        <span style={{ fontFamily: BRAND, color: '#fff' }}>Precious Gems </span>
+                        <em style={{ fontFamily: DISPLAY, fontStyle: 'italic', color: C.gold, fontWeight: 400 }}>Collection</em>
+                    </h1>
+                    <p style={{
+                        margin: '14px auto 0', maxWidth: 500,
+                        fontFamily: DISPLAY, fontSize: 16, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5,
+                    }}>
+                        {loading ? 'Loading...' : `Discover ${total.toLocaleString()} certified gems from master cutters across Sri Lanka and beyond.`}
+                    </p>
                 </div>
-
-                {activeTags.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginTop: 14 }}>
-                        {activeTags.map((tag, index) => (
-                            <span key={index} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 999, border: `1px solid ${T.goldBorder}`, background: T.goldSoft, color: '#8A640D', fontSize: '0.74rem', fontWeight: 600, fontFamily: FONT_BODY }}>
-                                {tag.label}
-                                <button onClick={tag.clear} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#8A640D', display: 'flex', alignItems: 'center' }}>
-                                    <X size={11} />
-                                </button>
-                            </span>
-                        ))}
-                    </div>
-                )}
             </div>
 
-            <div style={{ maxWidth: 1380, margin: '20px auto 60px', padding: '0 28px', display: 'flex', alignItems: 'flex-start', gap: 24 }}>
-                <aside className="gem-desktop-sidebar" style={{ width: 248, flexShrink: 0, background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, padding: '18px 20px', position: 'sticky', top: 80, maxHeight: 'calc(100vh - 96px)', overflowY: 'auto', boxShadow: T.shadow }}>
-                    <FiltersBody />
+            {/* ═══ BREADCRUMB ═══ */}
+            <div style={{ padding: '12px 40px', maxWidth: 1400, margin: '0 auto' }}>
+                <nav style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span onClick={() => navigate('/')} style={{ fontFamily: BRAND, fontSize: 11, color: C.navy, opacity: 0.6, cursor: 'pointer', letterSpacing: '0.02em' }}>Home</span>
+                    <span style={{ fontFamily: BRAND, fontSize: 11, color: C.gold }}>/</span>
+                    <span style={{ fontFamily: BRAND, fontSize: 11, color: C.navy, opacity: 0.6, letterSpacing: '0.02em' }}>Gems Catalogue</span>
+                </nav>
+            </div>
+
+            {/* ═══ MAIN CONTENT ═══ */}
+            <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0 40px 60px', display: 'flex', gap: 32, alignItems: 'flex-start' }}>
+
+                {/* ── LEFT: Filter Sidebar (desktop) ── */}
+                <aside className="gem-filter-sidebar" style={{
+                    width: 260, flexShrink: 0, position: 'sticky', top: 80,
+                    maxHeight: 'calc(100vh - 96px)', overflowY: 'auto',
+                }}>
+                    <FilterSidebar activeCount={activeCount} onClear={clearAll}>
+                        <FiltersContent />
+                    </FilterSidebar>
                 </aside>
 
+                {/* ── Mobile filter drawer ── */}
                 <AnimatePresence>
                     {mobileFiltersOpen && (
                         <>
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setMobileFiltersOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.36)', zIndex: 200 }} />
-                            <motion.div initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'tween', duration: 0.22 }} style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: 300, background: T.white, zIndex: 201, overflowY: 'auto', padding: 20, boxShadow: '4px 0 36px rgba(0,0,0,0.16)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-                                    <button onClick={() => setMobileFiltersOpen(false)} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: T.bgSoft, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <X size={16} color={T.muted} />
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                onClick={() => setMobileFiltersOpen(false)}
+                                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200 }}
+                            />
+                            <motion.div
+                                initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                                transition={{ type: 'tween', duration: 0.25 }}
+                                style={{
+                                    position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 201,
+                                    background: C.white, borderRadius: '16px 16px 0 0',
+                                    maxHeight: '85vh', overflowY: 'auto', padding: '0 0 80px',
+                                }}
+                            >
+                                <div style={{
+                                    position: 'sticky', top: 0, background: C.white, zIndex: 2,
+                                    padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                    borderBottom: `0.5px solid ${C.border}`,
+                                }}>
+                                    <span style={{ fontFamily: BRAND, fontSize: 13, color: C.navy, letterSpacing: '0.06em' }}>Filters</span>
+                                    <button onClick={() => setMobileFiltersOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                                        <X size={18} color={C.muted} />
                                     </button>
                                 </div>
-                                <FiltersBody />
+                                <div style={{ padding: '0 0 0' }}>
+                                    <FilterSidebar activeCount={activeCount} onClear={clearAll}>
+                                        <FiltersContent />
+                                    </FilterSidebar>
+                                </div>
+                                <div style={{
+                                    position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 202,
+                                    padding: '12px 20px', background: C.white, borderTop: `0.5px solid ${C.border}`,
+                                }}>
+                                    <button onClick={() => setMobileFiltersOpen(false)} style={{
+                                        width: '100%', padding: '12px', borderRadius: 4, border: 'none',
+                                        background: C.gold, color: C.white, fontFamily: BRAND, fontSize: 12,
+                                        letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
+                                    }}>
+                                        Show {total} gem{total !== 1 ? 's' : ''}
+                                    </button>
+                                </div>
                             </motion.div>
                         </>
                     )}
                 </AnimatePresence>
 
+                {/* ── RIGHT: Main Content ── */}
                 <main style={{ flex: 1, minWidth: 0 }}>
-                    {loading ? (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 20 }}>
-                            {Array.from({ length: 8 }).map((_, index) => (
-                                <SkeletonCard key={index} />
-                            ))}
+                    {/* Results header */}
+                    <div style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                        marginBottom: 24, flexWrap: 'wrap', gap: 12,
+                    }}>
+                        <div>
+                            <h2 style={{ margin: 0, fontFamily: BRAND, fontSize: 18, color: C.navy, fontWeight: 400, letterSpacing: '0.02em' }}>
+                                Precious Gems Collection
+                            </h2>
+                            <p style={{ margin: '4px 0 0', fontFamily: DISPLAY, fontSize: 14, color: C.muted }}>
+                                {loading ? 'Loading...' : `${total.toLocaleString()} gems available`}
+                                {search && !loading && ` matching '${search}'`}
+                                {categoryId && !loading && (() => {
+                                    const cat = categories.find(c => c.id === categoryId);
+                                    return cat ? ` in ${cat.name}` : '';
+                                })()}
+                            </p>
                         </div>
-                    ) : error ? (
-                        <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, padding: '64px 20px', textAlign: 'center' }}>
-                            <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'center' }}><StatusIcon type="error" /></div>
-                            <div style={{ color: '#B45309', fontWeight: 600, fontFamily: FONT_BODY }}>{error}</div>
-                            <button onClick={fetchCatalog} style={{ marginTop: 16, padding: '9px 22px', borderRadius: 8, border: 'none', background: T.navy, color: T.white, fontFamily: FONT_DISPLAY, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.09em', textTransform: 'uppercase', cursor: 'pointer' }}>
-                                Try Again
-                            </button>
-                        </div>
-                    ) : gems.length === 0 ? (
-                        <div style={{ background: T.white, border: `1px solid ${T.border}`, borderRadius: 14, padding: '72px 20px', textAlign: 'center' }}>
-                            <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'center' }}><StatusIcon type="empty" /></div>
-                            <div style={{ color: T.navy, fontFamily: FONT_SERIF, fontSize: '1.55rem', fontWeight: 700 }}>No gems found</div>
-                            <div style={{ color: T.muted, fontFamily: FONT_BODY, fontSize: '0.84rem', marginTop: 8 }}>Try adjusting your filters or search terms.</div>
-                            {activeCount > 0 && (
-                                <button onClick={clearAll} style={{ marginTop: 18, padding: '9px 22px', borderRadius: 8, border: `1px solid ${T.border}`, background: 'transparent', color: T.muted, fontFamily: FONT_DISPLAY, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}>
-                                    Clear All Filters
-                                </button>
-                            )}
-                        </div>
-                    ) : (
-                        <>
-                            <div style={{ marginBottom: 12, color: T.muted, fontSize: '0.78rem', fontFamily: FONT_BODY }}>
-                                Showing {((page - 1) * LIMIT) + 1}–{Math.min(page * LIMIT, total)} of {total.toLocaleString()} gems
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            {/* Search */}
+                            <div style={{ position: 'relative' }}>
+                                <Search size={13} color={C.faint} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
+                                <input value={searchInput} onChange={e => setSearchInput(e.target.value)}
+                                    placeholder="Search gems..."
+                                    style={{
+                                        width: 190, padding: '8px 12px 8px 30px', borderRadius: 4,
+                                        border: `0.5px solid ${C.border}`, background: C.parchment,
+                                        fontFamily: BRAND, fontSize: 11, color: C.text, outline: 'none',
+                                        boxSizing: 'border-box',
+                                    }}
+                                />
                             </div>
-                            {viewMode === 'list' ? (
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                    {gems.map((gem, index) => (
-                                        <motion.div key={gem.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.02 }}>
-                                            <GemCard gem={gem} listView onClick={() => navigate(`/gem/${gem.id}`)} />
-                                        </motion.div>
-                                    ))}
-                                </motion.div>
-                            ) : (
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 20 }}>
-                                    {gems.map((gem, index) => (
-                                        <motion.div key={gem.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}>
-                                            <GemCard gem={gem} onClick={() => navigate(`/gem/${gem.id}`)} />
-                                        </motion.div>
-                                    ))}
-                                </motion.div>
-                            )}
-                        </>
+
+                            {/* Grid/List toggle */}
+                            <div style={{ display: 'flex', border: `0.5px solid ${C.border}`, borderRadius: 4, overflow: 'hidden' }}>
+                                <button onClick={() => setViewMode('grid')} style={{
+                                    padding: '7px 9px', border: 'none', cursor: 'pointer',
+                                    background: viewMode === 'grid' ? C.navy : C.white,
+                                    display: 'flex', alignItems: 'center',
+                                }}>
+                                    <LayoutGrid size={13} color={viewMode === 'grid' ? C.parchment : C.navy} />
+                                </button>
+                                <button onClick={() => setViewMode('list')} style={{
+                                    padding: '7px 9px', border: 'none', borderLeft: `0.5px solid ${C.border}`, cursor: 'pointer',
+                                    background: viewMode === 'list' ? C.navy : C.white,
+                                    display: 'flex', alignItems: 'center',
+                                }}>
+                                    <List size={13} color={viewMode === 'list' ? C.parchment : C.navy} />
+                                </button>
+                            </div>
+
+                            {/* Sort */}
+                            <SortDropdown sortIndex={sortIndex} onChange={setSortIndex} />
+                        </div>
+                    </div>
+
+                    {/* "Showing X–Y of Z" */}
+                    {!loading && !error && gems.length > 0 && (
+                        <p style={{
+                            margin: '0 0 16px', fontFamily: BRAND, fontSize: 11, color: C.muted,
+                            letterSpacing: '0.02em', textAlign: 'center',
+                        }}>
+                            Showing {((page - 1) * LIMIT) + 1}–{Math.min(page * LIMIT, total)} of {total.toLocaleString()} gems
+                        </p>
                     )}
 
+                    {/* Grid / List / Loading / Error / Empty */}
+                    <GemGrid
+                        gems={gems}
+                        loading={loading}
+                        error={error}
+                        viewMode={viewMode}
+                        onRetry={fetchCatalog}
+                        onClear={clearAll}
+                        hasFilters={activeCount > 0}
+                        onGemClick={(gem) => navigate(`/gem/${gem.id}`)}
+                    />
+
+                    {/* ═══ PAGINATION ═══ */}
                     {totalPages > 1 && !loading && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 40 }}>
-                            <PageButton disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</PageButton>
-                            {Array.from({ length: Math.min(totalPages, 7) }, (_, index) => index + 1).map((pageNumber) => (
-                                <button
-                                    key={pageNumber}
-                                    onClick={() => setPage(pageNumber)}
-                                    style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${page === pageNumber ? T.gold : T.border}`, background: page === pageNumber ? T.gold : T.white, color: page === pageNumber ? T.white : T.muted, fontFamily: FONT_BODY, fontSize: '0.8rem', fontWeight: page === pageNumber ? 700 : 500, cursor: 'pointer' }}
+                        <div style={{ marginTop: 48, textAlign: 'center' }}>
+                            <p style={{ fontFamily: BRAND, fontSize: 11, color: C.muted, margin: '0 0 12px', letterSpacing: '0.02em' }}>
+                                Showing {((page - 1) * LIMIT) + 1}–{Math.min(page * LIMIT, total)} of {total.toLocaleString()} gems
+                            </p>
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
+                                {/* Previous */}
+                                <button disabled={page <= 1} onClick={() => setPage(v => v - 1)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 4,
+                                        padding: '8px 14px', borderRadius: 4,
+                                        border: `0.5px solid rgba(26,77,140,0.15)`,
+                                        background: C.white, color: page <= 1 ? C.faint : C.navy,
+                                        fontFamily: DISPLAY, fontSize: 14,
+                                        cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                                        opacity: page <= 1 ? 0.4 : 1,
+                                    }}
                                 >
-                                    {pageNumber}
+                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 2.5L4 6l3.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                    Previous
                                 </button>
-                            ))}
-                            <PageButton disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)}>Next</PageButton>
+
+                                {/* Page numbers */}
+                                {(() => {
+                                    const pages = [];
+                                    const maxShow = 7;
+                                    let start = Math.max(1, page - Math.floor(maxShow / 2));
+                                    let end = Math.min(totalPages, start + maxShow - 1);
+                                    if (end - start < maxShow - 1) start = Math.max(1, end - maxShow + 1);
+
+                                    if (start > 1) {
+                                        pages.push(1);
+                                        if (start > 2) pages.push('...');
+                                    }
+                                    for (let i = start; i <= end; i++) pages.push(i);
+                                    if (end < totalPages) {
+                                        if (end < totalPages - 1) pages.push('...');
+                                        pages.push(totalPages);
+                                    }
+
+                                    return pages.map((p, i) =>
+                                        p === '...' ? (
+                                            <span key={`e${i}`} style={{ padding: '0 4px', color: C.muted, fontFamily: DISPLAY, fontSize: 14 }}>…</span>
+                                        ) : (
+                                            <button key={p} onClick={() => setPage(p)}
+                                                style={{
+                                                    width: 40, height: 40, borderRadius: 4,
+                                                    border: page === p ? 'none' : `0.5px solid rgba(26,77,140,0.15)`,
+                                                    background: page === p ? C.navy : C.white,
+                                                    color: page === p ? C.parchment : C.navy,
+                                                    fontFamily: DISPLAY, fontSize: 14,
+                                                    cursor: 'pointer', transition: 'all 0.15s',
+                                                }}
+                                                onMouseEnter={e => { if (page !== p) { e.currentTarget.style.background = C.navy; e.currentTarget.style.color = C.parchment; } }}
+                                                onMouseLeave={e => { if (page !== p) { e.currentTarget.style.background = C.white; e.currentTarget.style.color = C.navy; } }}
+                                            >{p}</button>
+                                        )
+                                    );
+                                })()}
+
+                                {/* Next */}
+                                <button disabled={page >= totalPages} onClick={() => setPage(v => v + 1)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 4,
+                                        padding: '8px 14px', borderRadius: 4,
+                                        border: `0.5px solid rgba(26,77,140,0.15)`,
+                                        background: C.white, color: page >= totalPages ? C.faint : C.navy,
+                                        fontFamily: DISPLAY, fontSize: 14,
+                                        cursor: page >= totalPages ? 'not-allowed' : 'pointer',
+                                        opacity: page >= totalPages ? 0.4 : 1,
+                                    }}
+                                >
+                                    Next
+                                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 2.5L8 6l-3.5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                </button>
+                            </div>
                         </div>
                     )}
                 </main>
             </div>
 
+            {/* ── Mobile floating filter button ── */}
+            <button
+                className="gem-mobile-filter-btn"
+                onClick={() => setMobileFiltersOpen(true)}
+                style={{
+                    position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)',
+                    zIndex: 100, display: 'none',
+                    alignItems: 'center', gap: 8,
+                    padding: '12px 24px', borderRadius: 4, border: 'none',
+                    background: C.navy, color: C.parchment,
+                    fontFamily: BRAND, fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase',
+                    cursor: 'pointer', boxShadow: '0 4px 20px rgba(26,77,140,0.3)',
+                }}
+            >
+                <SlidersHorizontal size={14} />
+                Filter & Sort
+                {activeCount > 0 && (
+                    <span style={{
+                        width: 18, height: 18, borderRadius: '50%', background: C.gold,
+                        color: C.white, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>{activeCount}</span>
+                )}
+            </button>
+
             <style>{`
                 @keyframes gemPulse {
-                    0%, 100% { opacity: 0.58; }
+                    0%, 100% { opacity: 0.6; }
                     50% { opacity: 1; }
                 }
-
-                .gem-desktop-sidebar::-webkit-scrollbar {
-                    width: 4px;
-                }
-
-                .gem-desktop-sidebar::-webkit-scrollbar-thumb {
-                    background: ${T.border};
-                    border-radius: 999px;
-                }
+                .gem-filter-sidebar::-webkit-scrollbar { width: 3px; }
+                .gem-filter-sidebar::-webkit-scrollbar-thumb { background: rgba(26,77,140,0.15); border-radius: 999px; }
 
                 @media (max-width: 860px) {
-                    .gem-desktop-sidebar {
-                        display: none !important;
-                    }
-
-                    .gem-mobile-filter-toggle {
-                        display: inline-flex !important;
-                    }
+                    .gem-filter-sidebar { display: none !important; }
+                    .gem-mobile-filter-btn { display: inline-flex !important; }
+                }
+                @media (max-width: 768px) {
+                    .gem-filter-sidebar { display: none !important; }
+                    .gem-mobile-filter-btn { display: inline-flex !important; }
                 }
             `}</style>
         </div>

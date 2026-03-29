@@ -1,7 +1,6 @@
 /**
  * certificatesService.js — API calls for the certificates module
  */
-import { supabase } from '../../../config/supabase';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
@@ -37,13 +36,22 @@ export const getUploadUrl = (ext) =>
 
 /** Upload a certificate file to Supabase Storage using a signed URL */
 export const uploadCertificateFile = async (path, token, file) => {
-    const { error } = await supabase.storage
-        .from('certificates')
-        .uploadToSignedUrl(path, token, file, { contentType: 'application/pdf' });
-    if (error) throw error;
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const url = `${supabaseUrl}/storage/v1/object/upload/sign/certificates/${path}?token=${encodeURIComponent(token)}`;
 
-    const { data } = supabase.storage.from('certificates').getPublicUrl(path);
-    return data.publicUrl;
+    const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/pdf' },
+        body: file,
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: res.statusText }));
+        throw new Error(err.message || 'Upload failed');
+    }
+
+    // Private bucket — build the authenticated URL via the backend instead of getPublicUrl
+    return `${supabaseUrl}/storage/v1/object/certificates/${path}`;
 };
 
 /** Create a certificate record in the database */
@@ -87,3 +95,7 @@ export const rejectCertificate = (id, notes) =>
 /** Delete a pending certificate */
 export const deleteCertificate = (id) =>
     apiFetch(`/api/certificates/${id}`, { method: 'DELETE' });
+
+/** Get a signed download URL for a certificate PDF (1-hour expiry) */
+export const getDocumentUrl = (id) =>
+    apiFetch(`/api/certificates/${id}/document-url`);

@@ -6,6 +6,7 @@ import { getPublicProfile } from '../services/usersService';
 import { getGems } from '../../gems/services/gemsService';
 import RatingSummary from '../../reviews/components/RatingSummary';
 import SellerRatingBadge from '../../reviews/components/SellerRatingBadge';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const FONT_SERIF = "'Cormorant Garamond', serif";
 const FONT_DISPLAY = "'Cinzel', serif";
@@ -17,6 +18,7 @@ const T = {
 
 export default function SellerPublicProfile() {
     const { sellerId } = useParams();
+    const { formatPrice } = useCurrency();
 
     const { data: profile, isLoading, error } = useQuery({
         queryKey: ['sellerPublicProfile', sellerId],
@@ -171,7 +173,7 @@ export default function SellerPublicProfile() {
                                             </div>
                                             {gem.buy_now_price && (
                                                 <span style={{ fontFamily: FONT_BODY, fontSize: '0.88rem', fontWeight: 600, color: T.navy }}>
-                                                    ${gem.buy_now_price.toLocaleString()}
+                                                    {formatPrice(gem.buy_now_price)}
                                                 </span>
                                             )}
                                             <ExternalLink size={14} color={T.muted} />

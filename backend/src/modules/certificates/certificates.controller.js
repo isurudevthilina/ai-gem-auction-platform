@@ -63,6 +63,11 @@ const deleteCertificate = catchAsync(async (req, res) => {
     apiResponse(res, 200, result, 'Certificate deleted');
 });
 
+const getDocumentUrl = catchAsync(async (req, res) => {
+    const result = await service.getDocumentUrl(req.params.id, req.user.id, req.user.role);
+    res.json({ success: true, data: result.data });
+});
+
 module.exports = {
     getUploadUrl,
     getSellerCertificates,
@@ -74,4 +79,5 @@ module.exports = {
     getCertificateById,
     getCertStats,
     deleteCertificate,
+    getDocumentUrl,
 };

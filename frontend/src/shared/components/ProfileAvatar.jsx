@@ -18,7 +18,8 @@ const getMenuItems = (role) => {
     } else if (role === 'seller') {
         items.push(
             { label: 'Seller Dashboard', to: '/seller-dashboard', icon: LayoutDashboard },
-            { label: 'My Listings', to: '/seller-dashboard', icon: GemIcon },
+            { label: 'My Listings', to: '/seller-dashboard', icon: GemIcon, state: { tab: 'listings' } },
+            { label: 'Watchlist', to: '/watchlist', icon: Heart },
             { label: 'List New Gem', to: '/gems/new', icon: ListPlus },
         );
     } else if (role === 'admin') {
@@ -168,10 +169,10 @@ export default function ProfileAvatar() {
 
                     {/* Menu Items */}
                     <div style={{ padding: '6px 0' }}>
-                        {menuItems.map(({ label, to, icon: Icon }) => (
+                        {menuItems.map(({ label, to, icon: Icon, state }) => (
                             <button
                                 key={to + label}
-                                onClick={() => { navigate(to); setOpen(false); }}
+                                onClick={() => { navigate(to, state ? { state } : undefined); setOpen(false); }}
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',

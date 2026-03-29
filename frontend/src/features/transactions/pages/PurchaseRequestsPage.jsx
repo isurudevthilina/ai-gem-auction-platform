@@ -5,6 +5,7 @@ import { useGetMyPurchases, useMarkComplete } from '../hooks/useTransactions';
 import PurchaseRequestCard from '../components/PurchaseRequestCard';
 import SimulatedPaymentModal from '../components/SimulatedPaymentModal';
 import OfflineArrangeModal from '../components/OfflineArrangeModal';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
   bg: '#F0EDE8', white: '#FFFFFF', sapphire: '#1A4D8C', gold: '#C4892A',
@@ -22,6 +23,7 @@ const pillBase = {
 
 const PurchaseRequestsPage = () => {
   const { user } = useAuth();
+  const { formatPrice } = useCurrency();
   const navigate = useNavigate();
   const [role, setRole] = useState('buyer');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -153,7 +155,7 @@ const PurchaseRequestsPage = () => {
                 Confirm that payment and delivery have been arranged offline with the buyer.
               </p>
               <div style={{ fontFamily: BODY, fontSize: '0.88rem', color: C.text, margin: '12px 0' }}>
-                {confirmCompleteItem.buyer?.full_name || 'Buyer'} — ${parseFloat(confirmCompleteItem.amount).toLocaleString()}
+                {confirmCompleteItem.buyer?.full_name || 'Buyer'} — {formatPrice(confirmCompleteItem.amount)}
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
                 <button onClick={() => setConfirmCompleteItem(null)} style={{

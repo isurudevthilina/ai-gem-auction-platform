@@ -22,6 +22,9 @@ router.post('/', authenticate, requireRole('seller', 'admin'), validate(createCe
 // Get by gem (existing)
 router.get('/gem/:gemId', authenticate, requireRole('seller', 'admin'), ctrl.getGemCertificates);
 
+// Get a signed download URL for the certificate PDF (admin or owner)
+router.get('/:id/document-url', authenticate, ctrl.getDocumentUrl);
+
 // Get single cert (admin or owner)
 router.get('/:id', authenticate, ctrl.getCertificateById);
 

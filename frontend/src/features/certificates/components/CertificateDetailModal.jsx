@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import CertificateStatusBadge from './CertificateStatusBadge';
+import { getDocumentUrl } from '../services/certificatesService';
 
 const C = {
     bg: '#F0EDE8', white: '#FFFFFF', sapphire: '#1A4D8C', gold: '#C4892A',
@@ -51,6 +53,17 @@ const InitialsAvatar = ({ name, url, size = 40 }) => {
 };
 
 const CertificateDetailModal = ({ cert, onClose, onVerify, onReject }) => {
+    const [docUrl, setDocUrl] = useState(null);
+
+    useEffect(() => {
+        if (!cert?.id) return;
+        let cancelled = false;
+        getDocumentUrl(cert.id)
+            .then(res => { if (!cancelled) setDocUrl(res.data?.url || null); })
+            .catch(() => { if (!cancelled) setDocUrl(null); });
+        return () => { cancelled = true; };
+    }, [cert?.id]);
+
     if (!cert) return null;
 
     const gemImg = cert.gem?.images?.find(u => typeof u === 'string' && !u.startsWith('model:'));
@@ -102,7 +115,7 @@ const CertificateDetailModal = ({ cert, onClose, onVerify, onReject }) => {
                     {/* Left — Document */}
                     <div style={{ padding: 24, borderRight: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column' }}>
                         <iframe
-                            src={cert.document_url}
+                            src={docUrl || ''}
                             title="Certificate Document"
                             style={{
                                 width: '100%', height: 500, border: `0.5px solid ${C.border}`,
@@ -110,12 +123,12 @@ const CertificateDetailModal = ({ cert, onClose, onVerify, onReject }) => {
                             }}
                         />
                         <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-                            <button onClick={() => window.open(cert.document_url, '_blank')} style={{
+                            <button onClick={() => docUrl && window.open(docUrl, '_blank')} disabled={!docUrl} style={{
                                 padding: '8px 16px', borderRadius: 8,
                                 border: `1px solid ${C.border}`, background: C.white, cursor: 'pointer',
                                 fontFamily: BODY, fontSize: '0.75rem', fontWeight: 600, color: C.sapphire,
                             }}>Open in New Tab</button>
-                            <a href={cert.document_url} download style={{
+                            <a href={docUrl || '#'} download style={{
                                 padding: '8px 16px', borderRadius: 8,
                                 border: `1px solid ${C.border}`, background: C.white,
                                 fontFamily: BODY, fontSize: '0.75rem', fontWeight: 600, color: C.sapphire,
