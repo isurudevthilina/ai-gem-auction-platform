@@ -15,6 +15,7 @@ export const useCreateGem = ({ onSuccess, onError } = {}) => {
 
     const mutation = useMutation({
         mutationFn: async ({ formData }) => {
+            console.log('[useCreateGem] mutationFn started, imageFiles:', formData.imageFiles?.length || 0);
             const urls = [];
 
             // Upload images
@@ -24,11 +25,13 @@ export const useCreateGem = ({ onSuccess, onError } = {}) => {
                     const ext = file.name.split('.').pop()?.toLowerCase() || '';
                     const is3D = ['glb', 'gltf'].includes(ext);
 
+                    console.log(`[useCreateGem] uploading file ${i}:`, file.name, is3D ? '(3D)' : '(image)');
                     setUploadProgress(prev => ({ ...prev, [i]: 30 }));
                     const url = is3D
                         ? await uploadGemModel(file)
                         : await uploadGemImage(file);
                     urls.push(url);
+                    console.log(`[useCreateGem] file ${i} uploaded:`, url);
                     setUploadProgress(prev => ({ ...prev, [i]: 100 }));
                 }
             }
@@ -51,6 +54,7 @@ export const useCreateGem = ({ onSuccess, onError } = {}) => {
                 status:        formData.status || 'listed',
             };
 
+            console.log('[useCreateGem] payload:', JSON.stringify(payload).substring(0, 200));
             return createGemViaAPI(payload);
         },
         onSuccess: (...args) => {

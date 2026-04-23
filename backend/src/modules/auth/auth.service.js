@@ -15,14 +15,13 @@ const registerUser = async (data) => {
         throw new ApiError(409, 'Email already registered.');
     }
 
-// Create user via Supabase client signUp (triggers confirmation email via SMTP)
-const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-        data: { full_name, role, phone_number: phone_number || undefined },
-    },
-});
+    // Create user via admin API (bypasses RLS, trigger creates profile)
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: false,
+        user_metadata: { full_name, role, phone_number: phone_number || undefined },
+    });
 
     if (authError) {
         if (authError.message && authError.message.includes('already been registered')) {
@@ -31,7 +30,7 @@ const { data: authData, error: authError } = await supabase.auth.signUp({
         throw new ApiError(400, authError.message);
     }
 
-    // Explicitly upsert the profile row so it always exists regardless of trigger timing
+    // Upsert profile with all fields (trigger only inserts basic fields)
     const profilePayload = {
         id: authData.user.id,
         email,
@@ -55,6 +54,16 @@ const { data: authData, error: authError } = await supabase.auth.signUp({
 
     if (profileError) {
         console.error('Profile upsert error:', profileError.message);
+    }
+
+    // Send verification email via SMTP
+    const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+    });
+
+    if (resendError) {
+        console.error('Verification email error:', resendError.message);
     }
 
     return { user: authData.user, message: 'Registration successful. Please verify your email.' };

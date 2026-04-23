@@ -82,6 +82,7 @@ const CreateGemPage = () => {
     });
 
     const handleSubmit = (formData, mode = 'draft') => {
+        console.log('[CreateGemPage] handleSubmit called, mode:', mode, 'imageFiles:', formData.imageFiles?.length);
         setSubmitMode(mode);
         mutation.mutate({ formData });
     };
