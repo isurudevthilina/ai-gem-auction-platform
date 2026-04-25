@@ -1,0 +1,7 @@
+# Root-level dependency folders
+backend/node_modules/
+frontend/node_modules/
+
+# Local environment files
+backend/.env
+frontend/.env
