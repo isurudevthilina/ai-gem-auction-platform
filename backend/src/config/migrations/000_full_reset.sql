@@ -37,6 +37,9 @@ DROP VIEW IF EXISTS public.seller_ratings CASCADE;
 DROP FUNCTION IF EXISTS public.place_bid(UUID, UUID, NUMERIC) CASCADE;
 DROP FUNCTION IF EXISTS public.complete_expired_auctions() CASCADE;
 DROP FUNCTION IF EXISTS public.buy_now(UUID, UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.delete_user_data(UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.delete_auction_data(UUID) CASCADE;
+DROP FUNCTION IF EXISTS public.next_review_post_sequence(UUID, UUID) CASCADE;
 
 -- Drop triggers on auth.users (must come before dropping the functions they call)
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
@@ -48,7 +51,14 @@ DROP FUNCTION IF EXISTS public.update_last_login()  CASCADE;
 DROP FUNCTION IF EXISTS public.set_updated_at()     CASCADE;
 
 -- Drop all tables (CASCADE handles FK references between them)
-DROP TABLE IF EXISTS public.reviews            CASCADE;
+DROP TABLE IF EXISTS public.wallet_withdrawals   CASCADE;
+DROP TABLE IF EXISTS public.wallet_gem_purchases CASCADE;
+DROP TABLE IF EXISTS public.second_chance_offers CASCADE;
+DROP TABLE IF EXISTS public.wallet_holds        CASCADE;
+DROP TABLE IF EXISTS public.wallet_topups       CASCADE;
+DROP TABLE IF EXISTS public.wallets             CASCADE;
+DROP TABLE IF EXISTS public.review_reports      CASCADE;
+DROP TABLE IF EXISTS public.reviews             CASCADE;
 DROP TABLE IF EXISTS public.watchlist           CASCADE;
 DROP TABLE IF EXISTS public.watchlist_folders   CASCADE;
 DROP TABLE IF EXISTS public.certificates        CASCADE;
@@ -1032,6 +1042,406 @@ GRANT EXECUTE ON FUNCTION public.buy_now(UUID, UUID) TO authenticated;
 
 
 -- ════════════════════════════════════════════════════════════════════════════════
+
+
+-- ════════════════════════════════════════════════════════════════════════════════
+-- MERGED FEATURE MIGRATIONS — reviews moderation, wallet, second chance flows
+-- ════════════════════════════════════════════════════════════════════════════════
+
+-- Migration 003: Add certification_body column to gems table
+-- Run this in the Supabase SQL Editor (Dashboard → SQL Editor → New Query)
+-- Safe to re-run — uses IF NOT EXISTS guard
+
+ALTER TABLE public.gems
+    ADD COLUMN IF NOT EXISTS certification_body TEXT;
+-- Function to delete user data, temporarily dropping the no_delete_bids rule
+-- Run this in Supabase SQL Editor once
+CREATE OR REPLACE FUNCTION delete_user_data(target_user_id UUID)
+RETURNS void AS $$
+BEGIN
+    DROP RULE IF EXISTS no_delete_bids ON public.bids;
+    DELETE FROM public.profiles WHERE id = target_user_id;
+    CREATE RULE no_delete_bids AS ON DELETE TO public.bids DO INSTEAD NOTHING;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- Function to hard-delete an auction, temporarily dropping the no_delete_bids rule
+-- so that ON DELETE CASCADE from auctions → bids works correctly.
+-- Run this in Supabase SQL Editor once.
+CREATE OR REPLACE FUNCTION delete_auction_data(target_auction_id UUID)
+RETURNS void AS $$
+BEGIN
+    DROP RULE IF EXISTS no_delete_bids ON public.bids;
+    DELETE FROM public.auctions WHERE id = target_auction_id;
+    CREATE RULE no_delete_bids AS ON DELETE TO public.bids DO INSTEAD NOTHING;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- Migration 004: Enforce review creation time window and max edit count
+-- Run this in Supabase SQL Editor (Dashboard -> SQL Editor -> New Query)
+-- Safe to re-run
+
+-- 1) Add edit_count column for review edit limit tracking
+ALTER TABLE public.reviews
+    ADD COLUMN IF NOT EXISTS edit_count INTEGER NOT NULL DEFAULT 0;
+
+-- 2) Ensure check constraint exists (drop/recreate idempotently)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'reviews_edit_count_range'
+          AND conrelid = 'public.reviews'::regclass
+    ) THEN
+        ALTER TABLE public.reviews DROP CONSTRAINT reviews_edit_count_range;
+    END IF;
+END $$;
+
+ALTER TABLE public.reviews
+    ADD CONSTRAINT reviews_edit_count_range CHECK (edit_count BETWEEN 0 AND 3);
+
+-- 3) Update review insert policy to allow only within 3 months of purchase
+DROP POLICY IF EXISTS "reviews_insert_buyer" ON public.reviews;
+CREATE POLICY "reviews_insert_buyer" ON public.reviews
+    FOR INSERT
+    WITH CHECK (
+        auth.uid() = reviewer_id
+        AND EXISTS (
+            SELECT 1 FROM public.transactions t
+            WHERE t.id = transaction_id
+              AND t.buyer_id = auth.uid()
+              AND t.status = 'completed'
+              AND NOW() <= t.created_at + INTERVAL '3 months'
+        )
+    );
+
+-- 4) Replace update policy: max 3 edits instead of 7-day window
+DROP POLICY IF EXISTS "reviews_update_recent" ON public.reviews;
+DROP POLICY IF EXISTS "reviews_update_limited" ON public.reviews;
+CREATE POLICY "reviews_update_limited" ON public.reviews
+    FOR UPDATE
+    USING (auth.uid() = reviewer_id AND edit_count < 3)
+    WITH CHECK (auth.uid() = reviewer_id);
+-- 005_review_reports_moderation.sql
+-- Adds seller->admin review reporting and admin moderation support.
+
+-- 1) Extend notifications type constraint for moderation-related notifications.
+ALTER TABLE public.notifications
+  DROP CONSTRAINT IF EXISTS notifications_type_check;
+
+ALTER TABLE public.notifications
+  ADD CONSTRAINT notifications_type_check CHECK (
+    type IN (
+      'outbid', 'auction_won', 'auction_ending',
+      'new_bid', 'auction_cancelled',
+      'certificate_verified', 'certificate_rejected',
+      'auction_started',
+      'review_reported', 'admin_warning'
+    )
+  );
+
+-- 2) Create review_reports table.
+CREATE TABLE IF NOT EXISTS public.review_reports (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  review_id UUID REFERENCES public.reviews(id) ON DELETE SET NULL,
+  reporter_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  reviewer_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  seller_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL CHECK (char_length(trim(reason)) BETWEEN 10 AND 1000),
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved')),
+  action_taken TEXT CHECK (action_taken IN ('removed_and_warned', 'dismissed')),
+  admin_note TEXT,
+  review_comment_snapshot TEXT,
+  review_rating_snapshot INTEGER CHECK (review_rating_snapshot BETWEEN 1 AND 5),
+  resolved_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  resolved_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_review_reports_status_created
+  ON public.review_reports(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_review_reports_seller_id
+  ON public.review_reports(seller_id);
+CREATE INDEX IF NOT EXISTS idx_review_reports_reviewer_id
+  ON public.review_reports(reviewer_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_review_reports_open_by_reporter
+  ON public.review_reports(review_id, reporter_id)
+  WHERE status = 'open';
+
+DROP TRIGGER IF EXISTS review_reports_set_updated_at ON public.review_reports;
+CREATE TRIGGER review_reports_set_updated_at
+  BEFORE UPDATE ON public.review_reports
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- 3) RLS policies.
+ALTER TABLE public.review_reports ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "review_reports_insert_seller" ON public.review_reports;
+CREATE POLICY "review_reports_insert_seller"
+  ON public.review_reports
+  FOR INSERT
+  WITH CHECK (reporter_id = auth.uid() AND seller_id = auth.uid());
+
+DROP POLICY IF EXISTS "review_reports_select_seller_or_admin" ON public.review_reports;
+CREATE POLICY "review_reports_select_seller_or_admin"
+  ON public.review_reports
+  FOR SELECT
+  USING (
+    reporter_id = auth.uid()
+    OR seller_id = auth.uid()
+    OR EXISTS (
+      SELECT 1
+      FROM public.profiles p
+      WHERE p.id = auth.uid() AND p.role = 'admin'
+    )
+  );
+
+DROP POLICY IF EXISTS "review_reports_update_admin" ON public.review_reports;
+CREATE POLICY "review_reports_update_admin"
+  ON public.review_reports
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.profiles p
+      WHERE p.id = auth.uid() AND p.role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM public.profiles p
+      WHERE p.id = auth.uid() AND p.role = 'admin'
+    )
+  );
+-- 006_reviews_media_uploads.sql
+-- Adds buyer review media support (photos/videos).
+
+ALTER TABLE public.reviews
+  ADD COLUMN IF NOT EXISTS media_urls TEXT[] NOT NULL DEFAULT '{}';
+
+ALTER TABLE public.reviews
+  DROP CONSTRAINT IF EXISTS reviews_media_urls_max6;
+
+ALTER TABLE public.reviews
+  ADD CONSTRAINT reviews_media_urls_max6
+  CHECK (COALESCE(array_length(media_urls, 1), 0) <= 6);
+-- ════════════════════════════════════════════════════════════════════
+-- TABLE 11 — wallets
+-- Virtual wallet balances for simulated deposits and top-ups.
+-- ════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS public.wallets (
+    user_id           UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
+    available_balance NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (available_balance >= 0),
+    locked_balance     NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (locked_balance >= 0),
+    created_at         TIMESTAMPTZ DEFAULT NOW(),
+    updated_at         TIMESTAMPTZ DEFAULT NOW()
+);
+
+DROP TRIGGER IF EXISTS wallets_set_updated_at ON public.wallets;
+CREATE TRIGGER wallets_set_updated_at
+    BEFORE UPDATE ON public.wallets
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+ALTER TABLE public.wallets ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "wallets_select_own" ON public.wallets;
+CREATE POLICY "wallets_select_own" ON public.wallets
+    FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "wallets_update_own" ON public.wallets;
+CREATE POLICY "wallets_update_own" ON public.wallets
+    FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- ════════════════════════════════════════════════════════════════════
+-- TABLE 12 — wallet_topups
+-- Demo payment records for simulated card top-ups.
+-- ════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS public.wallet_topups (
+    id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id           UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    amount            NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+    card_last4        TEXT,
+    payment_reference TEXT,
+    metadata          JSONB NOT NULL DEFAULT '{}',
+    created_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_wallet_topups_user_id ON public.wallet_topups(user_id);
+ALTER TABLE public.wallet_topups ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "wallet_topups_select_own" ON public.wallet_topups;
+CREATE POLICY "wallet_topups_select_own" ON public.wallet_topups
+    FOR SELECT USING (auth.uid() = user_id);
+
+-- ════════════════════════════════════════════════════════════════════
+-- TABLE 13 — wallet_holds
+-- Deposit locks for active bids.
+-- ════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS public.wallet_holds (
+    id                      UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id                 UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    auction_id              UUID NOT NULL REFERENCES public.auctions(id) ON DELETE CASCADE,
+    bid_amount              NUMERIC(12,2) NOT NULL CHECK (bid_amount > 0),
+    deposit_amount          NUMERIC(12,2) NOT NULL CHECK (deposit_amount >= 0),
+    status                  TEXT NOT NULL DEFAULT 'locked' CHECK (status IN ('locked', 'released', 'transferred')),
+    transferred_to_user_id  UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    released_at             TIMESTAMPTZ,
+    created_at              TIMESTAMPTZ DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ DEFAULT NOW()
+);
+
+DROP TRIGGER IF EXISTS wallet_holds_set_updated_at ON public.wallet_holds;
+CREATE TRIGGER wallet_holds_set_updated_at
+    BEFORE UPDATE ON public.wallet_holds
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_wallet_holds_unique_locked
+    ON public.wallet_holds(user_id, auction_id)
+    WHERE status = 'locked';
+
+ALTER TABLE public.wallet_holds ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "wallet_holds_select_own" ON public.wallet_holds;
+CREATE POLICY "wallet_holds_select_own" ON public.wallet_holds
+    FOR SELECT USING (auth.uid() = user_id);
+
+-- ════════════════════════════════════════════════════════════════════
+-- TABLE 14 — second_chance_offers
+-- Seller-offered fallback purchase for the next highest bidder.
+-- ════════════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS public.second_chance_offers (
+    id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    auction_id            UUID NOT NULL REFERENCES public.auctions(id) ON DELETE CASCADE,
+    transaction_id        UUID REFERENCES public.transactions(id) ON DELETE SET NULL,
+    original_winner_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    next_bidder_id        UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    seller_id             UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    amount                NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+    status                TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'expired', 'completed')),
+    expires_at            TIMESTAMPTZ,
+    created_at            TIMESTAMPTZ DEFAULT NOW(),
+    updated_at            TIMESTAMPTZ DEFAULT NOW()
+);
+
+DROP TRIGGER IF EXISTS second_chance_offers_set_updated_at ON public.second_chance_offers;
+CREATE TRIGGER second_chance_offers_set_updated_at
+    BEFORE UPDATE ON public.second_chance_offers
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_second_chance_offers_next_bidder ON public.second_chance_offers(next_bidder_id, status);
+CREATE INDEX IF NOT EXISTS idx_second_chance_offers_seller_id ON public.second_chance_offers(seller_id, status);
+
+ALTER TABLE public.second_chance_offers ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "second_chance_offers_select_own" ON public.second_chance_offers;
+CREATE POLICY "second_chance_offers_select_own" ON public.second_chance_offers
+    FOR SELECT USING (auth.uid() = next_bidder_id OR auth.uid() = seller_id);
+-- Track how many times a buyer has posted a review for the same transaction
+-- so public UI can show "Second Post" after delete + re-submit.
+
+CREATE TABLE IF NOT EXISTS public.review_post_counters (
+    reviewer_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    transaction_id UUID NOT NULL REFERENCES public.transactions(id) ON DELETE CASCADE,
+    post_count     INTEGER NOT NULL DEFAULT 0 CHECK (post_count >= 0),
+    created_at     TIMESTAMPTZ DEFAULT NOW(),
+    updated_at     TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (reviewer_id, transaction_id)
+);
+
+DROP TRIGGER IF EXISTS review_post_counters_set_updated_at ON public.review_post_counters;
+CREATE TRIGGER review_post_counters_set_updated_at
+    BEFORE UPDATE ON public.review_post_counters
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+ALTER TABLE public.review_post_counters ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "review_post_counters_select_own" ON public.review_post_counters;
+CREATE POLICY "review_post_counters_select_own" ON public.review_post_counters
+    FOR SELECT USING (auth.uid() = reviewer_id);
+
+ALTER TABLE public.reviews
+    ADD COLUMN IF NOT EXISTS post_sequence INTEGER NOT NULL DEFAULT 1 CHECK (post_sequence >= 1);
+
+-- Backfill safe default for existing rows.
+UPDATE public.reviews SET post_sequence = 1 WHERE post_sequence IS NULL;
+
+CREATE OR REPLACE FUNCTION public.next_review_post_sequence(
+    p_reviewer_id UUID,
+    p_transaction_id UUID
+)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_next INTEGER;
+BEGIN
+    INSERT INTO public.review_post_counters (reviewer_id, transaction_id, post_count)
+    VALUES (p_reviewer_id, p_transaction_id, 1)
+    ON CONFLICT (reviewer_id, transaction_id)
+    DO UPDATE SET post_count = review_post_counters.post_count + 1,
+                  updated_at = NOW()
+    WHERE review_post_counters.post_count < 3
+    RETURNING post_count INTO v_next;
+
+    IF v_next IS NULL THEN
+        RAISE EXCEPTION 'REVIEW_REPOST_LIMIT_REACHED';
+    END IF;
+
+    RETURN v_next;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.next_review_post_sequence(UUID, UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION public.next_review_post_sequence(UUID, UUID) TO authenticated;
+-- 010_wallet_gems_and_withdrawals.sql
+-- Adds in-app Gem purchases and simulated bank withdrawals for virtual wallet.
+
+ALTER TABLE public.wallets
+    ADD COLUMN IF NOT EXISTS gem_balance INTEGER NOT NULL DEFAULT 0 CHECK (gem_balance >= 0);
+
+CREATE TABLE IF NOT EXISTS public.wallet_gem_purchases (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    usd_amount NUMERIC(12,2) NOT NULL CHECK (usd_amount > 0),
+    gems_amount INTEGER NOT NULL CHECK (gems_amount > 0),
+    exchange_rate INTEGER NOT NULL CHECK (exchange_rate > 0),
+    metadata JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_wallet_gem_purchases_user_id ON public.wallet_gem_purchases(user_id, created_at DESC);
+
+ALTER TABLE public.wallet_gem_purchases ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "wallet_gem_purchases_select_own" ON public.wallet_gem_purchases;
+CREATE POLICY "wallet_gem_purchases_select_own" ON public.wallet_gem_purchases
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE TABLE IF NOT EXISTS public.wallet_withdrawals (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    bank_name TEXT NOT NULL,
+    account_number TEXT NOT NULL,
+    amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
+    transfer_reference TEXT,
+    status TEXT NOT NULL DEFAULT 'successful' CHECK (status IN ('successful', 'failed')),
+    metadata JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_wallet_withdrawals_user_id ON public.wallet_withdrawals(user_id, created_at DESC);
+
+ALTER TABLE public.wallet_withdrawals ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "wallet_withdrawals_select_own" ON public.wallet_withdrawals;
+CREATE POLICY "wallet_withdrawals_select_own" ON public.wallet_withdrawals
+    FOR SELECT USING (auth.uid() = user_id);
+
+
 -- SUPABASE REALTIME — enable on bids, auctions, notifications
 -- ════════════════════════════════════════════════════════════════════════════════
 DO $$
@@ -1084,7 +1494,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authentic
 --
 -- Tables created:
 --   profiles, categories, gems, auctions, bids, transactions,
---   notifications, watchlist_folders, watchlist, certificates, reviews
+--   notifications, watchlist_folders, watchlist, certificates, reviews,
+--   review_reports, wallets, wallet_topups, wallet_holds,
+--   second_chance_offers, wallet_gem_purchases, wallet_withdrawals
 --
 -- Views created:
 --   seller_ratings
