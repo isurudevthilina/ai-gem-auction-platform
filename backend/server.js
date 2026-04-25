@@ -18,8 +18,20 @@ ensureStorageBuckets().catch(err => console.error('❌ ensureStorageBuckets fail
 const app = express();
 
 // Middleware
+const allowedOrigins = [
+    process.env.CLIENT_URL,
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
+].filter(Boolean);
+
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error(`CORS blocked origin: ${origin}`));
+    },
     credentials: true
 }));
 app.use(express.json());
@@ -87,7 +99,7 @@ const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
     console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
     console.log(`📍 API URL: http://localhost:${PORT}`);
-    console.log(`🌐 Client URL: ${process.env.CLIENT_URL || 'http://localhost:5173'}`);
+    console.log(`🌐 Client URLs: ${allowedOrigins.join(', ')}`);
 });
 
 // ── Auction expiry cron — call complete_expired_auctions() every 30s ──
