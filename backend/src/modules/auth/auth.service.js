@@ -19,7 +19,7 @@ const registerUser = async (data) => {
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
-        email_confirm: false,
+        email_confirm: true,
         user_metadata: { full_name, role, phone_number: phone_number || undefined },
     });
 
@@ -39,6 +39,7 @@ const registerUser = async (data) => {
         phone_number: phone_number || null,
         district: district || null,
         province: province || null,
+        email_verified: true,
     };
 
     if (role === 'seller') {
@@ -56,17 +57,7 @@ const registerUser = async (data) => {
         console.error('Profile upsert error:', profileError.message);
     }
 
-    // Send verification email via SMTP
-    const { error: resendError } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-    });
-
-    if (resendError) {
-        console.error('Verification email error:', resendError.message);
-    }
-
-    return { user: authData.user, message: 'Registration successful. Please verify your email.' };
+    return { user: authData.user, message: 'Registration successful. You can now log in.' };
 };
 
 const loginUser = async ({ email, password }) => {
