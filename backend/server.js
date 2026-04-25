@@ -6,8 +6,9 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 // Now import Supabase config (which needs the env vars)
-const { testConnection, ensureStorageBuckets, supabaseAdmin } = require('./src/config/supabase');
+const { testConnection, ensureStorageBuckets } = require('./src/config/supabase');
 const errorHandler = require('./src/middleware/errorHandler');
+const { runAuctionCompletionCron } = require('./src/modules/auctions/auctionCompletion.cron');
 
 // Test Supabase connection & ensure storage buckets
 testConnection();
@@ -40,6 +41,7 @@ app.use('/api/auctions', require('./src/modules/auctions/auctions.routes'));
 app.use('/api/auctions/:id/bids', require('./src/modules/auctions/bids.routes'));
 app.use('/api/bids', require('./src/modules/auctions/bids.personal.routes'));
 app.use('/api/watchlist', require('./src/modules/watchlist/watchlist.routes'));
+app.use('/api/wallet', require('./src/modules/wallet/wallet.routes'));
 app.use('/api/reviews', require('./src/modules/reviews/reviews.routes'));
 app.use('/api/certificates', require('./src/modules/certificates/certificates.routes'));
 app.use('/api/transactions', require('./src/modules/transactions/transactions.routes'));
@@ -92,11 +94,13 @@ const server = app.listen(PORT, () => {
 const AUCTION_CRON_INTERVAL = 30_000;
 const runAuctionCron = async () => {
     try {
-        const { data, error } = await supabaseAdmin.rpc('complete_expired_auctions');
-        if (error) {
-            console.error('⏱ Auction cron error:', error.message);
-        } else if (data > 0) {
-            console.log(`⏱ Auction cron: completed ${data} expired auction(s)`);
+        const result = await runAuctionCompletionCron();
+        if (result.skipped) {
+            return;
+        }
+
+        if (result.completed > 0 || result.repaired > 0) {
+            console.log(`⏱ Auction cron: completed ${result.completed} expired auction(s), repaired ${result.repaired} winner mismatch(es)`);
         }
     } catch (err) {
         console.error('⏱ Auction cron exception:', err.message);

@@ -25,9 +25,14 @@ const moveToFolderSchema = z.object({
     folder_id: z.string().uuid().optional().nullable(),
 });
 
+const cleanupWatchlistSchema = z.object({
+    days: z.coerce.number().int().min(1, 'Time period must be at least 1 day').max(365, 'Maximum 365 days').default(30),
+});
+
 module.exports = {
     createFolderSchema,
     renameFolderSchema,
     addToWatchlistSchema,
     moveToFolderSchema,
+    cleanupWatchlistSchema,
 };

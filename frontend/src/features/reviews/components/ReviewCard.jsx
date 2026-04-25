@@ -11,9 +11,10 @@ const SERIF   = "'Cormorant Garamond','Georgia',serif";
 const DISPLAY = "'Cinzel',serif";
 const BODY    = "'Jost','Inter',sans-serif";
 
-const ReviewCard = ({ review, currentUserId, isAdmin, onDelete }) => {
+const ReviewCard = ({ review, currentUserId, isAdmin, onDelete, canReport = false, onReport, reportStatus = 'none' }) => {
   const [showFull, setShowFull] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [activeMediaIndex, setActiveMediaIndex] = useState(null);
 
   const reviewer = review.reviewer || {};
   const txn = review.transaction || {};
@@ -23,8 +24,11 @@ const ReviewCard = ({ review, currentUserId, isAdmin, onDelete }) => {
 
   const isOwner = currentUserId && currentUserId === review.reviewer_id;
   const canDelete = isOwner || isAdmin;
-  const daysSince = Math.floor((Date.now() - new Date(review.created_at).getTime()) / (1000 * 60 * 60 * 24));
-  const withinEditWindow = daysSince < 7;
+  const maxEdits = 3;
+  const usedEdits = Number(review.edit_count || 0);
+  const postSequence = Number(review.post_sequence || 1);
+  const canEdit = usedEdits < maxEdits;
+  const editsRemaining = Math.max(maxEdits - usedEdits, 0);
 
   const initials = (reviewer.full_name || '?').charAt(0).toUpperCase();
   const dateStr = new Date(review.created_at).toLocaleDateString('en-US', {
@@ -33,6 +37,20 @@ const ReviewCard = ({ review, currentUserId, isAdmin, onDelete }) => {
 
   const comment = review.comment || '';
   const isLong = comment.length > 200;
+  const mediaUrls = Array.isArray(review.media_urls) ? review.media_urls : [];
+  const hasActiveMedia = activeMediaIndex !== null && activeMediaIndex >= 0 && activeMediaIndex < mediaUrls.length;
+  const activeMediaUrl = hasActiveMedia ? mediaUrls[activeMediaIndex] : null;
+  const activeIsVideo = activeMediaUrl ? /\.(mp4|webm|mov)(\?|$)/i.test(activeMediaUrl) : false;
+
+  const closeMediaViewer = () => setActiveMediaIndex(null);
+  const showPrevMedia = () => {
+    if (!mediaUrls.length || activeMediaIndex === null) return;
+    setActiveMediaIndex((activeMediaIndex - 1 + mediaUrls.length) % mediaUrls.length);
+  };
+  const showNextMedia = () => {
+    if (!mediaUrls.length || activeMediaIndex === null) return;
+    setActiveMediaIndex((activeMediaIndex + 1) % mediaUrls.length);
+  };
 
   return (
     <div style={{
@@ -65,6 +83,34 @@ const ReviewCard = ({ review, currentUserId, isAdmin, onDelete }) => {
             </div>
             <div style={{ fontFamily: BODY, fontSize: '0.72rem', color: C.faint }}>
               {dateStr}
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+              {usedEdits > 0 && (
+                <span style={{
+                  background: 'rgba(26,77,140,0.10)',
+                  color: C.sapphire,
+                  fontFamily: BODY,
+                  fontSize: '0.64rem',
+                  borderRadius: 999,
+                  padding: '2px 8px',
+                  fontWeight: 700,
+                }}>
+                  Edited
+                </span>
+              )}
+              {postSequence > 1 && (
+                <span style={{
+                  background: 'rgba(217,119,6,0.12)',
+                  color: '#b45309',
+                  fontFamily: BODY,
+                  fontSize: '0.64rem',
+                  borderRadius: 999,
+                  padding: '2px 8px',
+                  fontWeight: 700,
+                }}>
+                  {postSequence === 2 ? 'Second Post' : `Post #${postSequence}`}
+                </span>
+              )}
             </div>
             {txn.amount && parseFloat(txn.amount) > 1000 && (
               <div style={{
@@ -136,14 +182,180 @@ const ReviewCard = ({ review, currentUserId, isAdmin, onDelete }) => {
         )}
       </div>
 
+      {mediaUrls.length > 0 && (
+        <div style={{
+          marginTop: 12,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+          gap: 10,
+        }}>
+          {mediaUrls.map((url, idx) => {
+            const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(url);
+            return (
+              <div
+                key={`${review.id}-media-${idx}`}
+                onClick={() => setActiveMediaIndex(idx)}
+                style={{
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                  border: `1px solid ${C.border}`,
+                  background: C.bg,
+                  cursor: 'zoom-in',
+                  position: 'relative',
+                }}
+              >
+                {isVideo ? (
+                  <video src={url} muted style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
+                ) : (
+                  <img src={url} alt="Review media" style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />
+                )}
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 6,
+                    bottom: 6,
+                    background: 'rgba(0,0,0,0.6)',
+                    color: '#fff',
+                    borderRadius: 999,
+                    padding: '2px 8px',
+                    fontFamily: BODY,
+                    fontSize: '0.65rem',
+                  }}
+                >
+                  View
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {hasActiveMedia && (
+        <div
+          onClick={closeMediaViewer}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(0,0,0,0.82)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 18,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(1200px, 96vw)',
+              maxHeight: '92vh',
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <button
+              onClick={closeMediaViewer}
+              style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                transform: 'translate(40%, -40%)',
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                border: 'none',
+                background: 'rgba(0,0,0,0.75)',
+                color: '#fff',
+                cursor: 'pointer',
+                fontSize: '1rem',
+              }}
+            >
+              ✕
+            </button>
+
+            {mediaUrls.length > 1 && (
+              <button
+                onClick={showPrevMedia}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: '50%',
+                  transform: 'translate(-120%, -50%)',
+                  width: 38,
+                  height: 38,
+                  borderRadius: '50%',
+                  border: 'none',
+                  background: 'rgba(0,0,0,0.75)',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: '1.2rem',
+                }}
+              >
+                ‹
+              </button>
+            )}
+
+            {activeIsVideo ? (
+              <video
+                src={activeMediaUrl}
+                controls
+                autoPlay
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '90vh',
+                  borderRadius: 10,
+                  background: '#000',
+                }}
+              />
+            ) : (
+              <img
+                src={activeMediaUrl}
+                alt="Review media full size"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '90vh',
+                  borderRadius: 10,
+                  objectFit: 'contain',
+                  background: '#111',
+                }}
+              />
+            )}
+
+            {mediaUrls.length > 1 && (
+              <button
+                onClick={showNextMedia}
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: '50%',
+                  transform: 'translate(120%, -50%)',
+                  width: 38,
+                  height: 38,
+                  borderRadius: '50%',
+                  border: 'none',
+                  background: 'rgba(0,0,0,0.75)',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: '1.2rem',
+                }}
+              >
+                ›
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Footer — owner / admin actions */}
-      {canDelete && onDelete && (
+      {(canDelete && onDelete) || (canReport && onReport) ? (
         <div style={{
           marginTop: 14, paddingTop: 12,
           borderTop: `0.5px solid ${C.border}`,
           display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap',
         }}>
-          {isOwner && withinEditWindow && (
+          {isOwner && canEdit && (
             <Link
               to={`/reviews/${review.id}/edit`}
               style={{
@@ -158,26 +370,79 @@ const ReviewCard = ({ review, currentUserId, isAdmin, onDelete }) => {
               Edit
             </Link>
           )}
-          {isOwner && !withinEditWindow && (
+          {isOwner && !canEdit && (
             <span style={{ fontFamily: BODY, fontSize: '0.72rem', color: C.faint }}>
-              Edit window expired ({daysSince} days ago)
+              Edit limit reached (3 of 3 edits used)
             </span>
           )}
-          <span
-            onClick={() => setShowDeleteConfirm(true)}
-            style={{
-              fontFamily: BODY, fontSize: '0.78rem', color: C.red,
-              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4,
-              marginLeft: isOwner && withinEditWindow ? 0 : 'auto',
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            </svg>
-            {isAdmin && !isOwner ? 'Remove (Admin)' : 'Delete'}
-          </span>
-          {showDeleteConfirm && (
+          {isOwner && canEdit && (
+            <span style={{ fontFamily: BODY, fontSize: '0.72rem', color: C.faint }}>
+              {editsRemaining} edit(s) remaining
+            </span>
+          )}
+          {canReport && onReport && (
+            reportStatus === 'open' ? (
+              <span
+                style={{
+                  fontFamily: BODY,
+                  fontSize: '0.76rem',
+                  color: '#92400e',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginLeft: 'auto',
+                  background: 'rgba(217,119,6,0.12)',
+                  border: '1px solid rgba(217,119,6,0.25)',
+                  borderRadius: 14,
+                  padding: '4px 10px',
+                  fontWeight: 600,
+                }}
+              >
+                Reported to Admin
+              </span>
+            ) : (
+              <span
+                onClick={() => onReport(review.id)}
+                style={{
+                  fontFamily: BODY,
+                  fontSize: '0.78rem',
+                  color: '#b45309',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  marginLeft: 'auto',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M14.4 6H20"/>
+                  <path d="M14.4 10H20"/>
+                  <path d="M14.4 14H20"/>
+                  <path d="M4 18V5a2 2 0 0 1 2-2h7l5 5v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>
+                </svg>
+                Report to Admin
+              </span>
+            )
+          )}
+
+          {canDelete && onDelete && (
+            <span
+              onClick={() => setShowDeleteConfirm(true)}
+              style={{
+                fontFamily: BODY, fontSize: '0.78rem', color: C.red,
+                cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4,
+                marginLeft: !canReport ? (isOwner && canEdit ? 0 : 'auto') : 0,
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+              </svg>
+              {isAdmin && !isOwner ? 'Remove (Admin)' : 'Delete'}
+            </span>
+          )}
+
+          {canDelete && onDelete && showDeleteConfirm && (
             <div style={{
               width: '100%', marginTop: 6, padding: '10px 12px',
               borderRadius: 8, background: 'rgba(217,119,6,0.08)',
@@ -211,7 +476,7 @@ const ReviewCard = ({ review, currentUserId, isAdmin, onDelete }) => {
                 </div>
               )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

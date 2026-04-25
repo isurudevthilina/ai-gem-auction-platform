@@ -46,6 +46,10 @@ const removeFromWatchlist = async (userId, gemId) => {
     return repository.removeFromWatchlist(userId, gemId);
 };
 
+const removeOlderThan = async (userId, days) => {
+    return repository.removeOlderThan(userId, days);
+};
+
 const moveToFolder = async (userId, watchlistId, folderId) => {
     const resolvedFolderId = folderId === 'uncategorized' ? null : folderId;
     return repository.moveToFolder(userId, watchlistId, resolvedFolderId);
@@ -63,6 +67,7 @@ module.exports = {
     getWatchlist,
     addToWatchlist,
     removeFromWatchlist,
+    removeOlderThan,
     moveToFolder,
     checkWatchlist,
 };

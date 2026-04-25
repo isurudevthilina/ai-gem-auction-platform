@@ -149,6 +149,9 @@ const WriteReviewPage = () => {
                     <p style={{ fontFamily: BODY, fontSize: '0.88rem', color: C.muted, lineHeight: 1.6, margin: '0 0 16px' }}>
                       You have already submitted a review for this purchase.
                     </p>
+                    <p style={{ fontFamily: BODY, fontSize: '0.82rem', color: C.faint, lineHeight: 1.6, margin: '0 0 16px' }}>
+                      Delete attempts left: {Number(canReviewData.remainingDeleteAttempts ?? 0)}/{Number(canReviewData.maxDeleteAttempts ?? 2)}
+                    </p>
                     {canReviewData.existingReviewId && (
                       <button
                         onClick={() => navigate(`/reviews/${canReviewData.existingReviewId}/edit`)}
@@ -172,6 +175,11 @@ const WriteReviewPage = () => {
                     <p style={{ fontFamily: BODY, fontSize: '0.88rem', color: C.muted, lineHeight: 1.6, margin: 0 }}>
                       {canReviewData.reason}
                     </p>
+                    {canReviewData.maxDeleteAttempts !== undefined && (
+                      <p style={{ fontFamily: BODY, fontSize: '0.82rem', color: C.faint, lineHeight: 1.6, margin: '8px 0 0' }}>
+                        Delete attempts left: {Number(canReviewData.remainingDeleteAttempts ?? 0)}/{Number(canReviewData.maxDeleteAttempts ?? 2)}
+                      </p>
+                    )}
                   </>
                 )}
               </div>

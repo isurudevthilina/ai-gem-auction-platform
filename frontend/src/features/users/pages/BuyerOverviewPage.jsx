@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
     TrendingUp, Gavel, Heart, ShoppingBag, Clock, Eye, ArrowRight,
+    Star,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../api/client';
@@ -119,8 +120,16 @@ const BidRow = ({ bid }) => {
 ════════════════════════════════════════════════════ */
 export default function BuyerOverviewPage() {
     const { user } = useAuth();
+    const { formatPrice } = useCurrency();
 
-    const [stats, setStats] = useState({ activeBids: 0, auctionsWon: 0, watchlistCount: 0, purchaseCount: 0 });
+    const [stats, setStats] = useState({
+        activeBids: 0,
+        auctionsWon: 0,
+        watchlistCount: 0,
+        purchaseCount: 0,
+        reviewsCount: 0,
+        walletBalance: 0,
+    });
     const [recentBids, setRecentBids] = useState([]);
     const [loading, setLoading] = useState(false);
 
@@ -131,19 +140,26 @@ export default function BuyerOverviewPage() {
             api.get('/bids/my-history', { params: { limit: 100 } }).then(r => r.data),
             api.get('/watchlist').then(r => r.data),
             api.get('/transactions', { params: { role: 'buyer', limit: 100 } }).then(r => r.data),
-        ]).then(([bidsR, watchR, txR]) => {
+            api.get('/reviews/my-reviews').then(r => r.data),
+            api.get('/wallet/me').then(r => r.data),
+        ]).then(([bidsR, watchR, txR, reviewsR, walletR]) => {
             const bidsBody = bidsR.status === 'fulfilled' ? bidsR.value : null;
             const watchBody = watchR.status === 'fulfilled' ? watchR.value : null;
             const txBody = txR.status === 'fulfilled' ? txR.value : null;
+            const reviewsBody = reviewsR.status === 'fulfilled' ? reviewsR.value : null;
+            const walletBody = walletR?.status === 'fulfilled' ? walletR.value : null;
 
             const bidsRaw = bidsBody?.data || [];
             const watchRaw = watchBody?.data || [];
             const txRaw = txBody?.data || [];
+            const reviewsRaw = reviewsBody?.data || [];
+            const walletRaw = walletBody?.data || null;
 
             // Handle both paginated { data: [], total } and plain array responses
             const bids = Array.isArray(bidsRaw) ? bidsRaw : (bidsRaw.data || []);
             const watchItems = Array.isArray(watchRaw) ? watchRaw : (watchRaw.data || []);
             const txns = Array.isArray(txRaw) ? txRaw : (txRaw.data || []);
+            const myReviews = Array.isArray(reviewsRaw) ? reviewsRaw : (reviewsRaw.data || []);
 
             const activeBids = bids.filter(b => {
                 const a = b.auction || b.auctions;
@@ -154,7 +170,14 @@ export default function BuyerOverviewPage() {
                 return a?.status === 'completed' && b.is_winning;
             }).length;
 
-            setStats({ activeBids, auctionsWon, watchlistCount: watchItems.length, purchaseCount: txns.length });
+            setStats({
+                activeBids,
+                auctionsWon,
+                watchlistCount: watchItems.length,
+                purchaseCount: txns.length,
+                reviewsCount: myReviews.length,
+                walletBalance: Number(walletRaw?.available_balance || 0),
+            });
             setRecentBids(bids.slice(0, 5));
         }).finally(() => setLoading(false));
     }, [user?.id]);
@@ -191,6 +214,8 @@ export default function BuyerOverviewPage() {
                     <StatCard label="Auctions Won" value={stats.auctionsWon} icon={Gavel} color={C.green} to="/transactions" loading={loading} />
                     <StatCard label="Watchlist" value={stats.watchlistCount} icon={Heart} color={C.gold} to="/watchlist" loading={loading} />
                     <StatCard label="Purchases" value={stats.purchaseCount} icon={ShoppingBag} color={C.sapphire} to="/transactions" loading={loading} />
+                    <StatCard label="Ratings & Reviews" value={stats.reviewsCount} icon={Star} color={C.gold} to="/transactions" loading={loading} />
+                    <StatCard label="Wallet Balance" value={loading ? '—' : formatPrice(stats.walletBalance)} icon={TrendingUp} color={C.gold} to="/wallet/top-up" loading={loading} />
                 </motion.div>
 
                 {/* ── Recent Bids ── */}
@@ -253,6 +278,7 @@ export default function BuyerOverviewPage() {
                         { to: '/auctions', label: 'Browse Auctions', icon: Gavel },
                         { to: '/gems', label: 'Discover Gems', icon: Heart },
                         { to: '/watchlist', label: 'My Watchlist', icon: Eye },
+                        { to: '/transactions', label: 'Reviews & Ratings', icon: Star },
                     ].map(({ to, label, icon: Icon }) => (
                         <Link key={to} to={to} style={{
                             display: 'flex', alignItems: 'center', gap: 10,

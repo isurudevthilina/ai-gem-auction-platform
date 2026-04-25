@@ -30,6 +30,9 @@ export const confirmPayment = (id, paymentReference) =>
 export const markComplete = (id) =>
   apiFetch(`/api/transactions/${id}/mark-complete`, { method: 'PATCH' });
 
+export const offerNextBidder = (id) =>
+  apiFetch(`/api/transactions/${id}/offer-next-bidder`, { method: 'POST' });
+
 export const getMyPurchases = (filters = {}) => {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([k, v]) =>

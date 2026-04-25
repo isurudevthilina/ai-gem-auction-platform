@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatusBadge from './TransactionStatusBadge';
-import { useCheckCanReview } from '../../reviews/hooks/useReviews';
+import { useCheckCanReview, useDeleteReview } from '../../reviews/hooks/useReviews';
 import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
@@ -21,6 +21,28 @@ const btnBase = {
 const ReviewButton = ({ transactionId }) => {
   const navigate = useNavigate();
   const { data, isLoading } = useCheckCanReview(transactionId);
+  const deleteReview = useDeleteReview();
+  const remainingDeleteAttempts = Number(data?.remainingDeleteAttempts ?? 0);
+  const maxDeleteAttempts = Number(data?.maxDeleteAttempts ?? 2);
+  const isDeleteBlocked = remainingDeleteAttempts <= 0;
+
+  const handleDelete = () => {
+    if (!data?.existingReviewId || deleteReview.isPending) return;
+    if (isDeleteBlocked) {
+      window.alert(`Delete limit reached. You can delete and re-add a review only ${maxDeleteAttempts} times.`);
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete this review? You have ${remainingDeleteAttempts} delete attempt(s) remaining.`);
+    if (!confirmed) return;
+
+    deleteReview.mutate(data.existingReviewId, {
+      onError: (err) => {
+        window.alert(err?.message || 'Failed to delete review. Please try again.');
+      },
+    });
+  };
+
   if (isLoading || !data) return null;
   if (data.canReview) {
     return (
@@ -31,15 +53,108 @@ const ReviewButton = ({ transactionId }) => {
   }
   if (data.existingReviewId) {
     return (
-      <span style={{ fontFamily: BODY, fontSize: '0.75rem', color: C.green, fontWeight: 600 }}>
-        ✓ Review Submitted
-      </span>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, width: '100%' }}>
+        <div style={{
+          fontFamily: BODY,
+          fontSize: '0.70rem',
+          color: isDeleteBlocked ? C.red : C.faint,
+          textAlign: 'right',
+          maxWidth: 180,
+          lineHeight: 1.4,
+        }}>
+          Delete attempts left: {remainingDeleteAttempts}/{maxDeleteAttempts}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, width: '100%' }}>
+          <button
+            onClick={() => navigate(`/reviews/${data.existingReviewId}/edit`)}
+            title="Edit review"
+            aria-label="Edit review"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 9,
+              border: `1px solid ${C.border}`,
+              background: '#fff',
+              color: C.sapphire,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9"/>
+              <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+            </svg>
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={deleteReview.isPending || isDeleteBlocked}
+            title={isDeleteBlocked ? 'Delete limit reached' : 'Delete review'}
+            aria-label="Delete review"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 9,
+              background: 'rgba(185,28,28,0.06)',
+              border: '1px solid rgba(185,28,28,0.22)',
+              color: C.red,
+              cursor: deleteReview.isPending || isDeleteBlocked ? 'default' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+              opacity: deleteReview.isPending || isDeleteBlocked ? 0.5 : 1,
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
     );
   }
+
+  if (!data.canReview) {
+    const isLimitReached = typeof data.reason === 'string' && data.reason.toLowerCase().includes('limit');
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, width: '100%' }}>
+        <button
+          disabled
+          title="Review is unavailable"
+          aria-label="Review unavailable"
+          style={{
+            ...btnBase,
+            background: '#f5f5f5',
+            color: C.faint,
+            cursor: 'default',
+            border: `1px solid ${C.border}`,
+            opacity: 0.9,
+          }}
+        >
+          Leave Review
+        </button>
+        <div style={{
+          fontFamily: BODY,
+          fontSize: '0.70rem',
+          color: isLimitReached ? C.red : C.faint,
+          textAlign: 'right',
+          maxWidth: 190,
+          lineHeight: 1.35,
+        }}>
+          {isLimitReached ? 'No review re-posts left' : (data.reason || 'Review unavailable')}
+        </div>
+      </div>
+    );
+  }
+
   return null;
 };
 
-const PurchaseRequestCard = ({ item, role, onOpenPayment, onOpenOffline, onMarkComplete }) => {
+const PurchaseRequestCard = ({ item, role, onOpenPayment, onOpenOffline, onMarkComplete, onOfferNextBidder }) => {
   const [hovered, setHovered] = useState(false);
   const navigate = useNavigate();
   const { formatPrice } = useCurrency();
@@ -172,6 +287,11 @@ const PurchaseRequestCard = ({ item, role, onOpenPayment, onOpenOffline, onMarkC
                 <div style={{ fontFamily: BODY, fontSize: '0.72rem', color: C.faint, textAlign: 'right', marginTop: 4 }}>
                   Buyer has not completed payment yet
                 </div>
+                {item.type === 'auction_win' && (
+                  <button onClick={() => onOfferNextBidder?.(item)} style={{ ...btnBase, background: C.sapphire, color: '#fff' }}>
+                    Offer to Next Bidder
+                  </button>
+                )}
               </>
             )}
             {item.status === 'pending' && requiresOffline && (
@@ -179,6 +299,11 @@ const PurchaseRequestCard = ({ item, role, onOpenPayment, onOpenOffline, onMarkC
                 <button onClick={() => onMarkComplete(item)} style={{ ...btnBase, background: C.gold, color: '#fff' }}>
                   Mark as Completed
                 </button>
+                {item.type === 'auction_win' && (
+                  <button onClick={() => onOfferNextBidder?.(item)} style={{ ...btnBase, background: C.sapphire, color: '#fff' }}>
+                    Offer to Next Bidder
+                  </button>
+                )}
                 <button onClick={() => navigate(`/transactions/${item.id}`)} style={{
                   ...btnBase, background: 'transparent', border: `1px solid ${C.border}`, color: C.sapphire, fontWeight: 600,
                 }}>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useGetSellerReviews, useGetSellerRating, useDeleteReview } from '../hooks/useReviews';
+import { useGetSellerReviews, useDeleteReview, useReportReview, useGetMyReviewReports } from '../hooks/useReviews';
 import { useAuth } from '../../../context/AuthContext';
 import RatingSummary from '../components/RatingSummary';
 import ReviewCard from '../components/ReviewCard';
@@ -35,8 +35,33 @@ const SellerReviewsPage = () => {
 
   const currentUserId = user?.id;
   const isAdmin = user?.role === 'admin';
+  const canReportAsSeller = user?.role === 'seller' && currentUserId === sellerId;
   const deleteMutation = useDeleteReview();
+  const reportMutation = useReportReview();
+  const myReportsQuery = useGetMyReviewReports({ status: 'open', page: 0, limit: 200 });
+
+  const reportedReviewIds = new Set(
+    (myReportsQuery.data?.data || [])
+      .map((r) => r.review_id)
+      .filter(Boolean)
+  );
   const handleDelete = (reviewId) => deleteMutation.mutate(reviewId);
+  const handleReport = (reviewId) => {
+    const reason = window.prompt('Describe why this review is inappropriate (10+ characters):');
+    if (!reason) return;
+    if (reason.trim().length < 10) {
+      window.alert('Please provide at least 10 characters.');
+      return;
+    }
+
+    reportMutation.mutate(
+      { id: reviewId, reason: reason.trim() },
+      {
+        onSuccess: () => window.alert('Report submitted to admin.'),
+        onError: (err) => window.alert(err?.message || 'Failed to submit report.'),
+      }
+    );
+  };
 
   /* ---------- seller profile ---------- */
   const { data: seller } = useQuery({
@@ -63,8 +88,6 @@ const SellerReviewsPage = () => {
   const reviews  = reviewsQuery.data?.data || [];
   const total    = reviewsQuery.data?.count || 0;
   const totalPages = Math.ceil(total / limit);
-
-  const ratingQuery = useGetSellerRating(sellerId);
 
   /* ---------- Shimmer ---------- */
   const shimmerCard = (
@@ -186,6 +209,9 @@ const SellerReviewsPage = () => {
               currentUserId={currentUserId}
               isAdmin={isAdmin}
               onDelete={handleDelete}
+              canReport={canReportAsSeller && review.reviewer_id !== currentUserId}
+              onReport={handleReport}
+              reportStatus={reportedReviewIds.has(review.id) ? 'open' : 'none'}
             />
           ))}
         </div>

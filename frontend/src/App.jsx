@@ -28,6 +28,10 @@ import PurchaseRequestsPage from './features/transactions/pages/PurchaseRequests
 import ReceiptPage from './features/transactions/pages/ReceiptPage';
 import WriteReviewPage from './features/reviews/pages/WriteReviewPage';
 import SellerReviewsPage from './features/reviews/pages/SellerReviewsPage';
+import AdminReviewModerationPage from './features/reviews/pages/AdminReviewModerationPage';
+import TopUpPage from './features/wallet/pages/TopUpPage';
+import GemStorePage from './features/wallet/pages/GemStorePage';
+import WithdrawPage from './features/wallet/pages/WithdrawPage';
 import SellerPublicProfile from './features/users/pages/SellerPublicProfile';
 import CertificateReviewPanel from './features/certificates/pages/CertificateReviewPanel';
 import UserManagement from './features/users/pages/UserManagement';
@@ -37,6 +41,7 @@ import TermsPage from './shared/pages/TermsPage';
 import PrivacyPage from './shared/pages/PrivacyPage';
 import DisclaimerPage from './shared/pages/DisclaimerPage';
 import ToastContainer from './shared/components/ToastContainer';
+import RoleDashboardRedirect from './shared/components/RoleDashboardRedirect';
 import { useRealtimeNotifications } from './features/notifications/hooks/useNotifications';
 import { useAuth } from './context/AuthContext';
 
@@ -114,6 +119,21 @@ function App() {
                                 <PublicLayout><ReceiptPage /></PublicLayout>
                             </ProtectedRoute>
                         } />
+                        <Route path="/wallet/top-up" element={
+                            <ProtectedRoute>
+                                <PublicLayout><TopUpPage /></PublicLayout>
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/wallet/gem-store" element={
+                            <ProtectedRoute>
+                                <PublicLayout><GemStorePage /></PublicLayout>
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/wallet/withdraw" element={
+                            <ProtectedRoute>
+                                <PublicLayout><WithdrawPage /></PublicLayout>
+                            </ProtectedRoute>
+                        } />
 
                         {/* ── Reviews ── */}
                         <Route path="/sellers/:sellerId/reviews" element={
@@ -149,6 +169,11 @@ function App() {
                         } />
 
                         {/* ── Dashboard pages (with Navbar & Footer) ── */}
+                        <Route path="/dashboard" element={
+                            <ProtectedRoute>
+                                <PublicLayout><RoleDashboardRedirect /></PublicLayout>
+                            </ProtectedRoute>
+                        } />
                         <Route path="/overview" element={
                             <ProtectedRoute roles={['buyer']}>
                                 <PublicLayout><BuyerOverviewPage /></PublicLayout>
@@ -167,6 +192,11 @@ function App() {
                         <Route path="/admin-dashboard/users" element={
                             <ProtectedRoute roles={['admin']}>
                                 <PublicLayout><UserManagement /></PublicLayout>
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/admin-dashboard/reviews" element={
+                            <ProtectedRoute roles={['admin']}>
+                                <PublicLayout><AdminReviewModerationPage /></PublicLayout>
                             </ProtectedRoute>
                         } />
                         <Route path="/admin-dashboard" element={

@@ -19,6 +19,11 @@ const markOfflineComplete = catchAsync(async (req, res) => {
   apiResponse(res, 200, txn, 'Transaction marked complete.');
 });
 
+const offerNextBidder = catchAsync(async (req, res) => {
+  const result = await service.offerNextBidder(req.user.id, req.params.id);
+  apiResponse(res, 200, result, 'Second-chance offer created.');
+});
+
 const getMyPurchases = catchAsync(async (req, res) => {
   const filters = {
     status: req.query.status || 'all',
@@ -37,5 +42,5 @@ const getTransactionById = catchAsync(async (req, res) => {
 
 module.exports = {
   initiateBuyNow, confirmPayment, markOfflineComplete,
-  getMyPurchases, getTransactionById,
+  getMyPurchases, getTransactionById, offerNextBidder,
 };

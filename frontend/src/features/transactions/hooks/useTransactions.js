@@ -39,6 +39,14 @@ export const useMarkComplete = () => {
   });
 };
 
+export const useOfferNextBidder = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => transactionsService.offerNextBidder(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['purchases'] }),
+  });
+};
+
 export const useGetTransaction = (id) => {
   return useQuery({
     queryKey: ['transaction', id],

@@ -1,5 +1,9 @@
 const { supabaseAdmin } = require('../../config/supabase');
 const repo = require('./auctions.repository');
+const walletService = require('../wallet/wallet.service');
+
+const MIN_AUCTION_WALLET_BALANCE = 300;
+const BID_SECURITY_HOLD_AMOUNT = 300;
 
 const createAuction = async (validated, sellerId) => {
     // Verify gem exists
@@ -122,23 +126,36 @@ const cancelAuction = async (id, requestUser) => {
         return { error: 'has_bids' };
     }
 
-    const isScheduled = new Date(auction.start_time) > new Date();
-
-    if (isScheduled && auction.bid_count === 0) {
-        // Hard delete — auction hasn't started and has no bids
-        await repo.remove(id);
-        await supabaseAdmin.from('gems').update({ status: 'draft' }).eq('id', auction.gem_id);
-        return { success: true, hard_deleted: true };
-    }
-
-    // Soft cancel — auction is live
     await supabaseAdmin.from('auctions').update({ status: 'cancelled' }).eq('id', id);
     await supabaseAdmin.from('gems').update({ status: 'draft' }).eq('id', auction.gem_id);
 
-    return { success: true, hard_deleted: false };
+    return { success: true };
 };
 
 const placeBid = async (auctionId, bidderId, amount) => {
+    const securityState = await walletService.getBidSecurityState(bidderId, auctionId);
+
+    if (Number(securityState.effective_balance || 0) < MIN_AUCTION_WALLET_BALANCE) {
+        return {
+            error: 'minimum_wallet_balance_required',
+            meta: {
+                error_message: `A minimum wallet balance of $${MIN_AUCTION_WALLET_BALANCE} is required to join an auction. Please top up first.`,
+                required_min_wallet_balance: MIN_AUCTION_WALLET_BALANCE,
+                current_wallet_balance: Number(securityState.available_balance || 0),
+                effective_wallet_balance: Number(securityState.effective_balance || 0),
+                required_hold_amount: BID_SECURITY_HOLD_AMOUNT,
+                top_up_path: '/wallet/top-up',
+            },
+        };
+    }
+
+    const { data: previousWinningBid } = await supabaseAdmin
+        .from('bids')
+        .select('bidder_id, amount')
+        .eq('auction_id', auctionId)
+        .eq('is_winning', true)
+        .maybeSingle();
+
     const { data: result, error } = await supabaseAdmin.rpc('place_bid', {
         p_auction_id: auctionId,
         p_bidder_id:  bidderId,
@@ -151,11 +168,23 @@ const placeBid = async (auctionId, bidderId, amount) => {
         return { error: result.error_code, meta: result };
     }
 
+    const { deposit_amount } = await walletService.lockBidDeposit(
+        bidderId,
+        auctionId,
+        amount,
+        BID_SECURITY_HOLD_AMOUNT
+    );
+
+    if (previousWinningBid && previousWinningBid.bidder_id && previousWinningBid.bidder_id !== bidderId) {
+        await walletService.releaseBidDeposit(previousWinningBid.bidder_id, auctionId);
+    }
+
     return {
         data: {
             bid_id:     result.bid_id,
             new_price:  result.new_price,
             auction_id: result.auction_id,
+            deposit_amount,
         },
     };
 };

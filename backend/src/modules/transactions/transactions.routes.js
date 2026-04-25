@@ -15,5 +15,6 @@ router.get('/:id', ctrl.getTransactionById);
 router.post('/:id/confirm-payment',
   validate(confirmPaymentSchema), ctrl.confirmPayment);
 router.patch('/:id/mark-complete', ctrl.markOfflineComplete);
+router.post('/:id/offer-next-bidder', ctrl.offerNextBidder);
 
 module.exports = router;

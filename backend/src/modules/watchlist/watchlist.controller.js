@@ -37,6 +37,11 @@ const removeFromWatchlist = catchAsync(async (req, res) => {
     apiResponse(res, 200, result, 'Removed from watchlist.');
 });
 
+const removeOlderThan = catchAsync(async (req, res) => {
+    const result = await service.removeOlderThan(req.user.id, req.body.days);
+    apiResponse(res, 200, result, 'Old watchlist items removed.');
+});
+
 const moveToFolder = catchAsync(async (req, res) => {
     const item = await service.moveToFolder(req.user.id, req.params.id, req.body.folder_id);
     apiResponse(res, 200, item, 'Moved to folder.');
@@ -55,6 +60,7 @@ module.exports = {
     getWatchlist,
     addToWatchlist,
     removeFromWatchlist,
+    removeOlderThan,
     moveToFolder,
     checkWatchlist,
 };

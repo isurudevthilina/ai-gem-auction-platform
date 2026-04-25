@@ -36,13 +36,10 @@ const getFolders = async (userId) => {
 const createFolder = async (userId, name) => {
     const { data: existing, error: cErr } = await supabaseAdmin
         .from('watchlist_folders')
-        .select('id, name')
+        .select('id')
         .eq('user_id', userId);
     if (cErr) throw new ApiError(500, cErr.message);
     if (existing.length >= 20) throw new ApiError(400, 'Maximum 20 folders allowed');
-
-    const duplicate = existing.some(f => f.name.toLowerCase() === name.trim().toLowerCase());
-    if (duplicate) throw new ApiError(409, 'A folder with this name already exists');
 
     const { data, error } = await supabaseAdmin
         .from('watchlist_folders')
@@ -54,16 +51,6 @@ const createFolder = async (userId, name) => {
 };
 
 const renameFolder = async (folderId, userId, name) => {
-    const { data: existing, error: cErr } = await supabaseAdmin
-        .from('watchlist_folders')
-        .select('id, name')
-        .eq('user_id', userId)
-        .neq('id', folderId);
-    if (cErr) throw new ApiError(500, cErr.message);
-
-    const duplicate = existing.some(f => f.name.toLowerCase() === name.trim().toLowerCase());
-    if (duplicate) throw new ApiError(409, 'A folder with this name already exists');
-
     const { data, error } = await supabaseAdmin
         .from('watchlist_folders')
         .update({ name, updated_at: new Date().toISOString() })
@@ -157,6 +144,18 @@ const removeFromWatchlist = async (userId, gemId) => {
     return { deleted: true };
 };
 
+const removeOlderThan = async (userId, days) => {
+    const cutoff = new Date(Date.now() - Number(days) * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await supabaseAdmin
+        .from('watchlist')
+        .delete()
+        .eq('user_id', userId)
+        .lt('created_at', cutoff)
+        .select('id');
+    if (error) throw new ApiError(500, error.message);
+    return { deleted_count: data?.length || 0, cutoff };
+};
+
 const moveToFolder = async (userId, watchlistId, folderId) => {
     const { data, error } = await supabaseAdmin
         .from('watchlist')
@@ -220,6 +219,7 @@ module.exports = {
     getAll,
     addToWatchlist,
     removeFromWatchlist,
+    removeOlderThan,
     moveToFolder,
     isInWatchlist,
     countByFolder,

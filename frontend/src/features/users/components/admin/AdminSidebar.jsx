@@ -19,8 +19,9 @@ const AdminSidebar = ({ pendingCount = 0 }) => {
   const initials = (user?.full_name || 'A').charAt(0).toUpperCase();
 
   const handleSignOut = async () => {
-    try { await logout(); } catch {}
-    navigate('/login');
+    try { await logout(); } catch { /* ignore sign-out cleanup failures */ }
+    // Replace history entry so account switching cannot bounce back to prior protected pages.
+    navigate('/login', { replace: true, state: null });
   };
 
   return (

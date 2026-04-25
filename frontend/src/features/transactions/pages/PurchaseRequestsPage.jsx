@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-import { useGetMyPurchases, useMarkComplete } from '../hooks/useTransactions';
+import { useGetMyPurchases, useMarkComplete, useOfferNextBidder } from '../hooks/useTransactions';
 import PurchaseRequestCard from '../components/PurchaseRequestCard';
 import SimulatedPaymentModal from '../components/SimulatedPaymentModal';
 import OfflineArrangeModal from '../components/OfflineArrangeModal';
@@ -32,6 +32,7 @@ const PurchaseRequestsPage = () => {
   const [showOfflineModal, setShowOfflineModal] = useState(false);
   const [confirmCompleteItem, setConfirmCompleteItem] = useState(null);
   const markCompleteMutation = useMarkComplete();
+  const offerNextMutation = useOfferNextBidder();
 
   const filters = { status: statusFilter, role, page: 0, limit: 20 };
   const { data, isLoading } = useGetMyPurchases(filters);
@@ -131,6 +132,7 @@ const PurchaseRequestsPage = () => {
                 onOpenPayment={(txn) => { setActiveTransaction(txn); setShowPaymentModal(true); }}
                 onOpenOffline={(txn) => { setActiveTransaction(txn); setShowOfflineModal(true); }}
                 onMarkComplete={(txn) => setConfirmCompleteItem(txn)}
+                onOfferNextBidder={(txn) => offerNextMutation.mutate(txn.id)}
               />
             ))}
           </div>

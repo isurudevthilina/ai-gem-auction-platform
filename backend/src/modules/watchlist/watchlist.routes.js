@@ -8,6 +8,7 @@ const {
     renameFolderSchema,
     addToWatchlistSchema,
     moveToFolderSchema,
+    cleanupWatchlistSchema,
 } = require('./watchlist.validation');
 
 router.use(authenticate);
@@ -24,6 +25,7 @@ router.get('/check/:gemId', controller.checkWatchlist);
 // ── Watchlist CRUD ──
 router.get('/', controller.getWatchlist);
 router.post('/', validate(addToWatchlistSchema), controller.addToWatchlist);
+router.delete('/older-than', validate(cleanupWatchlistSchema), controller.removeOlderThan);
 router.delete('/:gemId', controller.removeFromWatchlist);
 router.patch('/:id/move', validate(moveToFolderSchema), controller.moveToFolder);
 

@@ -17,6 +17,7 @@ const placeBid = _catchAsync(async (req, res) => {
             auction_ended:       400,
             seller_cannot_bid:   403,
             bid_too_low:         422,
+            minimum_wallet_balance_required: 400,
             internal_error:      500,
         };
         const statusCode = statusMap[result.error] || 400;
@@ -25,6 +26,10 @@ const placeBid = _catchAsync(async (req, res) => {
             message: result.meta?.error_message || result.error,
             error_code: result.error,
             min_required: result.meta?.min_required,
+            required_min_wallet_balance: result.meta?.required_min_wallet_balance,
+            current_wallet_balance: result.meta?.current_wallet_balance,
+            effective_wallet_balance: result.meta?.effective_wallet_balance,
+            required_hold_amount: result.meta?.required_hold_amount,
         });
     }
 
