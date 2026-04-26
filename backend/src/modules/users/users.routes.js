@@ -1,20 +1,36 @@
 const express = require('express');
-const router = express.Router();
+const multer  = require('multer');
+const router  = express.Router();
+const { authenticate, requireRole } = require('../../middleware/auth.middleware');
+const validate = require('../../middleware/validate.middleware');
+const controller = require('./users.controller');
+const {
+    updateProfileSchema,
+    changeEmailSchema,
+    changePasswordSchema,
+    deleteAccountSchema,
+    adminUpdateUserSchema,
+} = require('./users.validation');
 
-router.get('/', (req, res) => {
-    res.json({ success: true, message: 'Users Module working' });
-});
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 
-router.get('/:id', (req, res) => {
-    res.json({ success: true, message: `Get user ${req.params.id}` });
-});
+/* ── Authenticated user routes ── */
+router.get('/me',          authenticate, controller.getProfile);
+router.patch('/me',        authenticate, validate(updateProfileSchema), controller.updateProfile);
+router.patch('/me/avatar', authenticate, upload.single('avatar'), controller.uploadAvatar);
+router.patch('/me/email',  authenticate, validate(changeEmailSchema), controller.changeEmail);
+router.patch('/me/password', authenticate, validate(changePasswordSchema), controller.changePassword);
+router.delete('/me',       authenticate, validate(deleteAccountSchema), controller.deleteAccount);
 
-router.patch('/:id', (req, res) => {
-    res.json({ success: true, message: `Patch user ${req.params.id}` });
-});
+/* ── Public routes (before parameterised admin routes) ── */
+router.get('/search/sellers', controller.searchSellers);
+router.get('/:id/public',    controller.getPublicProfile);
 
-router.delete('/:id', (req, res) => {
-    res.json({ success: true, message: `Delete user ${req.params.id}` });
-});
+/* ── Admin routes ── */
+router.get('/admin/stats',  authenticate, requireRole('admin'), controller.getUserStats);
+router.get('/admin/all',    authenticate, requireRole('admin'), controller.adminGetAllUsers);
+router.get('/admin/:id',    authenticate, requireRole('admin'), controller.adminGetUserById);
+router.patch('/admin/:id',  authenticate, requireRole('admin'), validate(adminUpdateUserSchema), controller.adminUpdateUser);
+router.delete('/admin/:id', authenticate, requireRole('admin'), controller.adminDeactivateUser);
 
 module.exports = router;

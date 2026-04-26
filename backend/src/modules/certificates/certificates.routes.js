@@ -1,24 +1,40 @@
 const express = require('express');
 const router = express.Router();
+const ctrl = require('./certificates.controller');
+const { authenticate, requireRole } = require('../../middleware/auth.middleware');
+const { validate, createCertificateSchema, verifyCertificateSchema, rejectCertificateSchema } = require('./certificates.validation');
 
-router.get('/', (req, res) => {
-    res.json({ success: true, message: 'Certificates Module working' });
-});
+// Upload URL (existing)
+router.post('/upload-url', authenticate, ctrl.getUploadUrl);
 
-router.post('/', (req, res) => {
-    res.json({ success: true, message: 'Create certificate' });
-});
+// Admin — stats (BEFORE /:id)
+router.get('/stats', authenticate, requireRole('admin'), ctrl.getCertStats);
 
-router.get('/:id', (req, res) => {
-    res.json({ success: true, message: `Get certificate ${req.params.id}` });
-});
+// Seller — get my certificates
+router.get('/mine', authenticate, requireRole('seller', 'admin'), ctrl.getSellerCertificates);
 
-router.patch('/:id', (req, res) => {
-    res.json({ success: true, message: `Patch certificate ${req.params.id}` });
-});
+// Admin — list all with filters
+router.get('/', authenticate, requireRole('admin'), ctrl.getAllCertificates);
 
-router.delete('/:id', (req, res) => {
-    res.json({ success: true, message: `Delete certificate ${req.params.id}` });
-});
+// Seller upload (existing)
+router.post('/', authenticate, requireRole('seller', 'admin'), validate(createCertificateSchema), ctrl.uploadCertificate);
+
+// Get by gem (existing)
+router.get('/gem/:gemId', authenticate, requireRole('seller', 'admin'), ctrl.getGemCertificates);
+
+// Get a signed download URL for the certificate PDF (admin or owner)
+router.get('/:id/document-url', authenticate, ctrl.getDocumentUrl);
+
+// Get single cert (admin or owner)
+router.get('/:id', authenticate, ctrl.getCertificateById);
+
+// Verify (existing, now with validation)
+router.patch('/:id/verify', authenticate, requireRole('admin'), validate(verifyCertificateSchema), ctrl.verifyCertificate);
+
+// Reject (existing, now with validation)
+router.patch('/:id/reject', authenticate, requireRole('admin'), validate(rejectCertificateSchema), ctrl.rejectCertificate);
+
+// Delete (seller pending cert only)
+router.delete('/:id', authenticate, requireRole('seller', 'admin'), ctrl.deleteCertificate);
 
 module.exports = router;

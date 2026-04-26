@@ -1,24 +1,26 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate, requireRole, optionalAuth } = require('../../middleware/auth.middleware');
+const { createGemSchema, updateGemSchema, aiValuationSchema, validate } = require('./gems.validation');
+const ctrl = require('./gems.controller');
 
-router.get('/', (req, res) => {
-    res.json({ success: true, message: 'Gems Module working' });
-});
+// ─── Public ──────────────────────────────────────────────────────────────────
+router.get('/',           optionalAuth, ctrl.listGems);
+router.get('/categories', ctrl.getCategories);
+router.get('/search',     ctrl.searchGems);
 
-router.post('/', (req, res) => {
-    res.json({ success: true, message: 'Create gem' });
-});
+// ─── Authenticated ───────────────────────────────────────────────────────────
+router.post('/ai-valuate', authenticate, validate(aiValuationSchema), ctrl.aiValuate);
 
-router.get('/:id', (req, res) => {
-    res.json({ success: true, message: `Get gem ${req.params.id}` });
-});
+// ─── Authenticated seller / admin ────────────────────────────────────────────
+router.post('/upload-url', authenticate, requireRole('seller', 'admin'), ctrl.getUploadUrl);
+router.get('/my/listings', authenticate, requireRole('seller', 'admin'), ctrl.getMyGems);
 
-router.patch('/:id', (req, res) => {
-    res.json({ success: true, message: `Patch gem ${req.params.id}` });
-});
-
-router.delete('/:id', (req, res) => {
-    res.json({ success: true, message: `Delete gem ${req.params.id}` });
-});
+// ─── Parameterised (must come AFTER literal paths) ───────────────────────────
+router.get('/:id',        optionalAuth, ctrl.getGem);
+router.post('/',           authenticate, requireRole('seller', 'admin'), validate(createGemSchema), ctrl.createGem);
+router.patch('/:id',       authenticate, requireRole('seller', 'admin'), validate(updateGemSchema), ctrl.updateGem);
+router.patch('/:id/publish', authenticate, requireRole('seller', 'admin'), ctrl.publishGem);
+router.delete('/:id',     authenticate, requireRole('seller', 'admin'), ctrl.deleteGem);
 
 module.exports = router;

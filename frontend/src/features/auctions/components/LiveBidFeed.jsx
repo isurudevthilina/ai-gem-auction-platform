@@ -1,14 +1,18 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
-    panel:  '#0f1220',
-    gold:   '#f59e0b',
-    green:  '#10b981',
-    text:   '#f1f5f9',
-    muted:  '#94a3b8',
-    dim:    '#475569',
-    border: 'rgba(255,255,255,0.08)',
+    white:  '#FFFFFF',
+    gold:   '#C4892A',
+    green:  '#16a34a',
+    text:   '#1A1A2E',
+    muted:  '#6B6B7B',
+    faint:  '#9A9AAB',
+    border: '#E0DCD6',
+    bg:     '#F0EDE8',
 };
+const DISPLAY = "'Cinzel', serif";
+const BODY    = "'Jost', 'Inter', sans-serif";
 
 const timeAgo = (isoStr) => {
     const secs = Math.floor((Date.now() - new Date(isoStr)) / 1000);
@@ -32,12 +36,13 @@ const avatarColor = (name) => {
  *   isConnected — bool (Realtime status)
  */
 const LiveBidFeed = ({ bids = [], isConnected }) => {
+    const { formatPrice } = useCurrency();
     return (
         <div style={{
-            background:    'rgba(13,17,28,0.9)',
+            background:    C.white,
             border:        `1px solid ${C.border}`,
             borderRadius:  14,
-            backdropFilter:'blur(18px)',
+            boxShadow:     '0 2px 12px rgba(0,0,0,0.04)',
             overflow:      'hidden',
             display:       'flex',
             flexDirection: 'column',
@@ -50,20 +55,17 @@ const LiveBidFeed = ({ bids = [], isConnected }) => {
                 display:       'flex',
                 alignItems:    'center',
                 justifyContent:'space-between',
-                background:    C.panel,
+                background:    C.bg,
                 flexShrink:    0,
             }}>
-                <div style={{ color: C.text, fontWeight: 700, fontSize: '0.9rem' }}>
+                <div style={{ color: C.text, fontFamily: BODY, fontWeight: 700, fontSize: '0.9rem' }}>
                     Live Bid Feed
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{
-                        width: 7, height: 7, borderRadius: '50%',
-                        background: isConnected ? C.green : C.dim,
-                        boxShadow:  isConnected ? `0 0 6px ${C.green}` : 'none',
-                        transition: 'all 0.3s',
-                    }} />
-                    <span style={{ color: isConnected ? C.green : C.dim, fontSize: '0.7rem', fontWeight: 600 }}>
+                    <svg width="7" height="7" viewBox="0 0 7 7">
+                        <circle cx="3.5" cy="3.5" r="3.5" fill={isConnected ? C.green : C.faint} />
+                    </svg>
+                    <span style={{ color: isConnected ? C.green : C.faint, fontSize: '0.7rem', fontFamily: BODY, fontWeight: 600 }}>
                         {isConnected ? 'Connected' : 'Connecting…'}
                     </span>
                 </div>
@@ -75,7 +77,8 @@ const LiveBidFeed = ({ bids = [], isConnected }) => {
                     <div style={{
                         padding:    '30px 18px',
                         textAlign:  'center',
-                        color:      C.dim,
+                        color:      C.faint,
+                        fontFamily: BODY,
                         fontSize:   '0.83rem',
                     }}>
                         No bids yet. Be the first!
@@ -94,7 +97,7 @@ const LiveBidFeed = ({ bids = [], isConnected }) => {
                                     alignItems:    'center',
                                     gap:           12,
                                     padding:       '10px 18px',
-                                    background:    index === 0 ? 'rgba(245,158,11,0.06)' : 'transparent',
+                                    background:    index === 0 ? 'rgba(196,137,42,0.06)' : 'transparent',
                                     borderLeft:    index === 0 ? `2px solid ${C.gold}` : '2px solid transparent',
                                     transition:    'background 0.3s',
                                 }}
@@ -110,20 +113,21 @@ const LiveBidFeed = ({ bids = [], isConnected }) => {
                                     justifyContent:'center',
                                     flexShrink:    0,
                                     fontSize:      '0.85rem',
+                                    fontFamily:    BODY,
                                     fontWeight:    800,
-                                    color:         '#0a0d14',
+                                    color:         '#FFFFFF',
                                 }}>
                                     {getInitial(bid.bidder?.full_name)}
                                 </div>
 
                                 {/* Name + time */}
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ color: C.text, fontSize: '0.82rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    <div style={{ color: C.text, fontSize: '0.82rem', fontFamily: BODY, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {bid.bidder?.full_name
                                             ? bid.bidder.full_name.split(' ')[0] + (bid.bidder.full_name.split(' ')[1] ? ' ' + bid.bidder.full_name.split(' ')[1][0] + '.' : '')
                                             : 'Anonymous'}
                                     </div>
-                                    <div style={{ color: C.dim, fontSize: '0.68rem' }}>
+                                    <div style={{ color: C.faint, fontSize: '0.68rem', fontFamily: BODY }}>
                                         {timeAgo(bid.created_at)}
                                     </div>
                                 </div>
@@ -133,13 +137,14 @@ const LiveBidFeed = ({ bids = [], isConnected }) => {
                                     <div style={{
                                         color:      index === 0 ? C.gold : C.text,
                                         fontSize:   '0.9rem',
+                                        fontFamily: BODY,
                                         fontWeight: index === 0 ? 800 : 600,
                                     }}>
-                                        ${Number(bid.amount).toLocaleString()}
+                                        {formatPrice(bid.amount)}
                                     </div>
                                     {index === 0 && bid.is_winning && (
-                                        <div style={{ color: C.green, fontSize: '0.62rem', fontWeight: 700 }}>
-                                            ● WINNING
+                                        <div style={{ color: C.gold, fontSize: '0.62rem', fontFamily: DISPLAY, fontWeight: 700, letterSpacing: '0.04em' }}>
+                                            TOP
                                         </div>
                                     )}
                                 </div>

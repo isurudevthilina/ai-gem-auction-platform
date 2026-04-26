@@ -1,173 +1,220 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import AuthLayout from '../../../shared/components/AuthLayout';
-import { useTheme } from '../../../context/ThemeContext';
-import { supabase } from '../../../config/supabase';
+import { useAuth } from '../../../context/AuthContext';
+import authService from '../../auth/services/authService';
+
+const loginSchema = z.object({
+    email: z.string().min(1, 'Email is required').email('Invalid email address'),
+    password: z.string().min(1, 'Password is required'),
+});
+
+const fieldStyle = (isFocused, hasError) => ({
+    width: '100%',
+    padding: '12px 14px',
+    background: isFocused ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.6)',
+    border: `1.5px solid ${hasError ? '#dc2626' : isFocused ? '#D4AF37' : 'rgba(26,35,64,0.14)'}`,
+    borderRadius: '10px',
+    fontSize: '0.94rem',
+    color: '#1a2340',
+    outline: 'none',
+    transition: 'all 0.22s',
+    boxSizing: 'border-box',
+    boxShadow: hasError ? '0 0 0 3px rgba(220,38,38,0.10)' : isFocused ? '0 0 0 3px rgba(212,175,55,0.14)' : 'none',
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
+});
+
+const labelStyle = {
+    display: 'block',
+    fontFamily: "'Cinzel', serif",
+    fontSize: '0.67rem',
+    fontWeight: 700,
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+    color: '#374151',
+    marginBottom: '6px',
+};
 
 const Login = () => {
     const navigate = useNavigate();
-    const { isDark } = useTheme();
-    const [focusedField, setFocusedField] = useState(null);
-    const [email,    setEmail]    = useState('');
-    const [password, setPassword] = useState('');
+    const location = useLocation();
+    const { login } = useAuth();
+    const from = location.state?.from ?? null;
+
+    const [focused,  setFocused]  = useState(null);
     const [loading,  setLoading]  = useState(false);
     const [error,    setError]    = useState(null);
+    const [needsVerification, setNeedsVerification] = useState(false);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const { register, handleSubmit, formState: { errors }, getValues } = useForm({
+        resolver: zodResolver(loginSchema),
+        defaultValues: { email: location.state?.email ?? '', password: '' },
+    });
+
+    const onSubmit = async (values) => {
         setError(null);
+        setNeedsVerification(false);
         setLoading(true);
         try {
-            const { data, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-            if (signInErr) throw signInErr;
-            // Fetch profile role to decide which dashboard to open
-            const { data: prof } = await supabase
-                .from('profiles')
-                .select('role')
-                .eq('id', data.user.id)
-                .single();
-            const role = prof?.role ?? 'buyer';
-            navigate(role === 'seller' || role === 'admin' ? '/seller-dashboard' : '/buyer-dashboard');
+            const profile = await login(values);
+
+            const role = profile?.role ?? 'buyer';
+            if (from) return navigate(from, { replace: true });
+            if (role === 'admin')  return navigate('/admin-dashboard',  { replace: true });
+            navigate('/gems', { replace: true });
         } catch (err) {
-            setError(err.message ?? 'Login failed. Check your credentials.');
+            const msg = err.response?.data?.message ?? err.message ?? 'Sign in failed. Please try again.';
+            if (err.response?.status === 403) {
+                setNeedsVerification(true);
+            }
+            setError(msg);
         } finally {
             setLoading(false);
         }
     };
 
-    const inputWrapperStyle = (isFocused) => ({
-        marginBottom: '32px',
-        borderBottom: `2.5px solid ${isFocused ? '#f59e0b' : (isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb')}`,
-        transition: 'all 0.3s',
-        position: 'relative',
-    });
-
-    const labelStyle = {
-        fontSize: '0.8rem',
-        color: isDark ? '#94a3b8' : '#64748b',
-        fontWeight: 600,
-        marginBottom: '4px',
-        display: 'block'
+    const handleResendVerification = async () => {
+        try {
+            await authService.resendVerification(getValues('email'));
+            setError('Verification email sent. Please check your inbox.');
+            setNeedsVerification(false);
+        } catch {
+            setError('Failed to resend verification email.');
+        }
     };
 
-    const inputStyle = {
-        width: '100%',
-        padding: '10px 0',
-        background: 'transparent',
-        border: 'none',
-        outline: 'none',
-        fontSize: '1rem',
-        color: isDark ? '#f1f5f9' : '#1e1b4b',
-        fontWeight: 500,
-    };
-
-    const socialBtnStyle = (colors) => ({
-        width: '100%',
-        padding: '12px',
-        background: isDark ? 'rgba(255,255,255,0.03)' : `linear-gradient(90deg, ${colors})`,
-        border: isDark ? '1px solid rgba(255,255,255,0.1)' : 'none',
-        borderRadius: '6px',
-        color: isDark ? '#f1f5f9' : 'white',
-        fontSize: '0.85rem',
-        fontWeight: 600,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '12px',
-        cursor: 'pointer',
-        marginBottom: '12px',
-        transition: 'all 0.2s',
+    const f = (key) => ({
+        style: fieldStyle(focused === key, !!errors[key]),
+        onFocus: () => setFocused(key),
+        onBlur:  () => setFocused(null),
     });
 
     return (
-        <AuthLayout
-            title="Sign In"
-            subtitle="Enter your details to access your GemBid account"
-        >
-            <form onSubmit={handleSubmit}>
-                <div style={inputWrapperStyle(focusedField === 'email')}>
+        <AuthLayout title="Welcome Back" subtitle="Sign in to your GemBid LK account">
+            <form onSubmit={handleSubmit(onSubmit)} noValidate>
+                <div style={{ marginBottom: '20px' }}>
                     <label style={labelStyle}>Email Address</label>
                     <input
                         type="email"
-                        placeholder="yourname@email.com"
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        style={inputStyle}
-                        onFocus={() => setFocusedField('email')}
-                        onBlur={() => setFocusedField(null)}
-                        required
+                        placeholder="you@example.com"
+                        autoComplete="email"
+                        {...register('email')}
+                        {...f('email')}
                     />
+                    {errors.email && (
+                        <p style={{ color: '#dc2626', fontSize: '0.78rem', marginTop: '4px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                            {errors.email.message}
+                        </p>
+                    )}
                 </div>
 
-                <div style={inputWrapperStyle(focusedField === 'pass')}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <label style={labelStyle}>Password</label>
-                        <Link to="/forgot-password" style={{ fontSize: '0.75rem', color: '#f59e0b', textDecoration: 'none', fontWeight: 600 }}>Forgot?</Link>
-                    </div>
+                <div style={{ marginBottom: '24px' }}>
+                    <label style={labelStyle}>Password</label>
                     <input
                         type="password"
-                        placeholder="••••••••"                        value={password}
-                        onChange={e => setPassword(e.target.value)}                        style={inputStyle}
-                        onFocus={() => setFocusedField('pass')}
-                        onBlur={() => setFocusedField(null)}
-                        required
+                        placeholder="Your password"
+                        autoComplete="current-password"
+                        {...register('password')}
+                        {...f('password')}
                     />
+                    {errors.password && (
+                        <p style={{ color: '#dc2626', fontSize: '0.78rem', marginTop: '4px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                            {errors.password.message}
+                        </p>
+                    )}
                 </div>
 
                 {error && (
-                    <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', fontSize: '0.82rem' }}>
+                    <div style={{
+                        marginBottom: '18px',
+                        padding: '11px 14px',
+                        borderRadius: '10px',
+                        background: 'rgba(239,68,68,0.08)',
+                        border: '1px solid rgba(239,68,68,0.22)',
+                        color: '#dc2626',
+                        fontSize: '0.83rem',
+                        fontFamily: "'Plus Jakarta Sans', sans-serif",
+                        lineHeight: 1.5,
+                    }}>
                         {error}
+                        {needsVerification && (
+                            <button
+                                type="button"
+                                onClick={handleResendVerification}
+                                style={{
+                                    display: 'block',
+                                    marginTop: '8px',
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#D4AF37',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    fontSize: '0.82rem',
+                                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                                }}
+                            >
+                                Resend verification email
+                            </button>
+                        )}
                     </div>
                 )}
-                <button type="submit" disabled={loading} style={{
-                    width: '100%',
-                    padding: '14px',
-                    background: 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)',
-                    color: '#0f172a',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '0.9rem',
-                    fontWeight: 800,
-                    letterSpacing: '1px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '10px',
-                    marginBottom: '32px',
-                    boxShadow: '0 4px 20px rgba(245, 158, 11, 0.25)',
-                    transition: 'all 0.2s'
-                }}
-                    onMouseEnter={e => { if (!loading) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 25px rgba(245, 158, 11, 0.35)'; }}}
-                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(245, 158, 11, 0.25)'; }}
+
+                <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                        width: '100%',
+                        padding: '13px',
+                        background: loading
+                            ? 'rgba(212,175,55,0.45)'
+                            : 'linear-gradient(135deg, #D4AF37 0%, #B8942E 100%)',
+                        color: '#1a2340',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontSize: '0.76rem',
+                        fontWeight: 700,
+                        fontFamily: "'Cinzel', serif",
+                        letterSpacing: '0.13em',
+                        textTransform: 'uppercase',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        marginBottom: '20px',
+                        boxShadow: loading ? 'none' : '0 4px 18px rgba(212,175,55,0.28)',
+                        transition: 'all 0.22s',
+                    }}
+                    onMouseEnter={e => {
+                        if (!loading) {
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = '0 6px 24px rgba(212,175,55,0.38)';
+                        }
+                    }}
+                    onMouseLeave={e => {
+                        e.currentTarget.style.transform = '';
+                        e.currentTarget.style.boxShadow = loading ? 'none' : '0 4px 18px rgba(212,175,55,0.28)';
+                    }}
                 >
-                    {loading ? 'Signing in…' : 'CONTINUE'}
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
-                    </svg>
+                    {loading ? 'Signing in\u2026' : 'Sign In'}
                 </button>
 
-                <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#94a3b8', marginBottom: '24px', fontWeight: 500 }}>
-                    or Connect with Social Media
-                </p>
-
-                <div style={{ marginBottom: '32px' }}>
-                    <button type="button" style={socialBtnStyle('#38bdf8, #0ea5e9')}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" /></svg>
-                        Twitter
-                    </button>
-                    <button type="button" style={socialBtnStyle('#3b82f6, #2563eb')}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M22.675 0h-21.35c-.732 0-1.325.593-1.325 1.325v21.351c0 .731.593 1.324 1.325 1.324h11.495v-8.74h-2.946v-3.447h2.946v-2.543c0-2.922 1.785-4.513 4.391-4.513 1.248 0 2.322.093 2.634.135v3.054h-1.808c-1.419 0-1.693.675-1.693 1.663v2.19h3.38l-.441 3.447h-2.939v8.74h6.052c.732 0 1.325-.593 1.325-1.325v-21.351c0-.732-.593-1.325-1.325-1.325z" /></svg>
-                        Facebook
-                    </button>
-                </div>
-
-                <div style={{ textAlign: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 500 }}>Don't have an account? </span>
-                    <Link to="/signup" style={{ fontSize: '0.85rem', color: '#f59e0b', fontWeight: 800, textDecoration: 'none' }}>
-                        Sign Up
+                <p style={{
+                    textAlign: 'center',
+                    fontSize: '0.83rem',
+                    color: '#6b7280',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    margin: 0,
+                }}>
+                    Don&apos;t have an account?{' '}
+                    <Link
+                        to="/signup"
+                        state={from ? { from } : undefined}
+                        style={{ color: '#D4AF37', fontWeight: 700, textDecoration: 'none' }}
+                    >
+                        Create Account
                     </Link>
-                </div>
+                </p>
             </form>
         </AuthLayout>
     );
