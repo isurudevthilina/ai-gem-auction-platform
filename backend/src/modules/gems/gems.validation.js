@@ -5,22 +5,23 @@ const { z } = require('zod');
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LISTING_TYPES = ['direct_sell', 'auction'];
-const STATUSES      = ['draft', 'listed', 'sold'];
+const STATUSES      = ['draft', 'listed', 'in_auction', 'sold', 'unlisted'];
 
 const CLARITY_GRADES = [
-    'Eye Clean', 'Slightly Included (SI)', 'Moderately Included (MI)',
-    'Heavily Included (HI)', 'Opaque',
+    'I1 (Included 1)',
+    'SI1 (Slightly Included 1)',
+    'SI2 (Slightly Included 2)',
+    'VS (Eye Clean 2)',
+    'VVS (Eye Clean 1)',
 ];
 
 const CUT_SHAPES = [
-    'Round', 'Oval', 'Cushion', 'Pear', 'Emerald Cut', 'Marquise',
-    'Princess', 'Radiant', 'Cabochon', 'Heart', 'Trillion',
-    'Baguette', 'Asscher', 'Mixed Cut',
+    'Cushion', 'Fancy', 'Heart', 'Marquise', 'Octagon',
+    'Other', 'Oval', 'Pear', 'Round', 'Trillion',
 ];
 
 const TREATMENTS = [
-    'Unheated (No Treatment)', 'Heat Treated', 'Beryllium Treated',
-    'Fracture Filled', 'Oiled', 'Irradiated', 'Diffusion', 'Coated',
+    'Be Heated', 'Fracture Filled', 'Heated', 'Irradiated', 'Untreated',
 ];
 
 const ORIGINS = [

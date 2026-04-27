@@ -1,0 +1,79 @@
+flowchart LR
+    subgraph Actors["Actors"]
+        Guest(("Guest"))
+        Buyer(("Buyer"))
+        Seller(("Seller"))
+        Admin(("Admin"))
+    end
+
+    subgraph Public["Public Marketplace"]
+        Browse["Browse Gems and Auctions"]
+        ViewDetail["View Gem Details and Seller Profile"]
+        Register["Register or Login"]
+        PredictPublic["View AI Valuation Page"]
+    end
+
+    subgraph BuyerUseCases["Buyer Use Cases"]
+        Predict["Request AI Price Prediction"]
+        Bid["Place Auction Bid"]
+        Wallet["Top Up Wallet and Lock Bid Deposit"]
+        Watchlist["Manage Watchlist Folders"]
+        BuyNow["Request Buy-Now Purchase"]
+        Transactions["Track Purchases and Receipts"]
+        Reviews["Write Seller Review"]
+        Notifications["View Notifications"]
+    end
+
+    subgraph SellerUseCases["Seller Use Cases"]
+        CreateGem["Create and Edit Gem Listing"]
+        StartAuction["Create and Manage Auction"]
+        UploadCert["Upload Gem Certificate"]
+        SellerDashboard["Manage Seller Dashboard"]
+        OfflineComplete["Confirm Offline High-Value Sale"]
+        SecondChance["Send Second-Chance Offer"]
+        Withdraw["Request Wallet Withdrawal"]
+    end
+
+    subgraph AdminUseCases["Admin Use Cases"]
+        AdminDashboard["View Admin Dashboard"]
+        ManageUsers["Manage Users and Roles"]
+        VerifyCert["Verify or Reject Certificates"]
+        ModerateReviews["Moderate Reported Reviews"]
+        PlatformHealth["Review Platform Health"]
+    end
+
+    Guest --> Browse
+    Guest --> ViewDetail
+    Guest --> Register
+    Guest --> PredictPublic
+
+    Buyer --> Browse
+    Buyer --> ViewDetail
+    Buyer --> Predict
+    Buyer --> Bid
+    Buyer --> Wallet
+    Buyer --> Watchlist
+    Buyer --> BuyNow
+    Buyer --> Transactions
+    Buyer --> Reviews
+    Buyer --> Notifications
+
+    Seller --> Browse
+    Seller --> Predict
+    Seller --> Bid
+    Seller --> Wallet
+    Seller --> CreateGem
+    Seller --> StartAuction
+    Seller --> UploadCert
+    Seller --> SellerDashboard
+    Seller --> OfflineComplete
+    Seller --> SecondChance
+    Seller --> Withdraw
+    Seller --> Notifications
+
+    Admin --> AdminDashboard
+    Admin --> ManageUsers
+    Admin --> VerifyCert
+    Admin --> ModerateReviews
+    Admin --> PlatformHealth
+    Admin --> Notifications

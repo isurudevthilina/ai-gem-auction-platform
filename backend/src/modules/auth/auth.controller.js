@@ -14,6 +14,9 @@ const login = catchAsync(async (req, res) => {
 
 const logout = catchAsync(async (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+        return apiResponse(res, 401, null, 'Authorization token is required.');
+    }
     const result = await authService.logoutUser(token);
     apiResponse(res, 200, null, result.message);
 });

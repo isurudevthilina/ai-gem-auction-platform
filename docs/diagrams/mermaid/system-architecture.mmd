@@ -1,0 +1,56 @@
+flowchart TB
+    subgraph Client["Client Application"]
+        Web["React 19 + Vite SPA"]
+        UI["Feature Modules: Users, Gems, Auctions, AI, Watchlist, Reviews, Certificates, Wallet, Transactions, Notifications"]
+        UX["Three.js Sapphire Landing Page + Responsive Marketplace UI"]
+        Web --> UI
+        Web --> UX
+    end
+
+    subgraph API["Node.js Express Backend"]
+        Routes["Routes"]
+        MW["Security Middleware: Helmet, CORS, Rate Limit, Auth, RBAC, Zod Validation"]
+        Services["Domain Services: Admin, Auctions, Gems, Users, Reviews, Certificates, Watchlist, Wallet, Transactions, Notifications"]
+        Repos["Repository Layer"]
+        Cron["Auction Completion Cron"]
+        Routes --> MW --> Services --> Repos
+        Cron --> Services
+    end
+
+    subgraph AI["AI Price Prediction Service"]
+        FastAPI["FastAPI Microservice"]
+        Model["XGBoost Model Artifacts"]
+        Explain["SHAP-Style Feature Explanations"]
+        FastAPI --> Model
+        FastAPI --> Explain
+    end
+
+    subgraph Supabase["Supabase Platform"]
+        Auth["Supabase Auth"]
+        DB[("PostgreSQL + RLS")]
+        Storage["Storage Buckets: Images and Certificates"]
+        Realtime["Realtime Channels: Auctions, Bids, Notifications"]
+        RPC["Database RPCs: place_bid, buy_now, complete_expired_auctions"]
+        Auth --> DB
+        RPC --> DB
+        Realtime --> DB
+    end
+
+    subgraph Quality["Quality and Delivery"]
+        GitHub["GitHub Repository"]
+        CI["GitHub Actions CI"]
+        QA["QA Runbook and Manual Test Evidence"]
+        GitHub --> CI
+        QA --> GitHub
+    end
+
+    Web -- "REST JSON requests" --> Routes
+    Web -- "JWT session" --> Auth
+    Web -- "Realtime subscriptions" --> Realtime
+    Web -- "Image/certificate upload and download" --> Storage
+    Services -- "CRUD queries and RPC calls" --> DB
+    Services -- "Prediction requests" --> FastAPI
+    Repos -- "Supabase Admin Client" --> DB
+    Cron -- "Complete expired auctions" --> RPC
+    CI -- "Build and test workflow" --> Web
+    CI -- "Backend test workflow" --> API

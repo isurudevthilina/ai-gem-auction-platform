@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SellerRatingBadge from '../../reviews/components/SellerRatingBadge';
 import { useCurrency } from '../../../context/CurrencyContext';
+import AddToWatchlistButton from '../../watchlist/components/AddToWatchlistButton';
 
 const C = {
     parchment: '#F0EDE8',
@@ -203,20 +204,9 @@ const GemCard = ({ gem, onClick }) => {
                     transform: hovered ? 'translateY(0)' : 'translateY(100%)',
                     transition: 'transform 0.25s ease',
                 }}>
-                    <button
-                        onClick={e => { e.stopPropagation(); /* TODO: watchlist */ }}
-                        style={{
-                            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
-                            padding: '10px 0', border: 'none', cursor: 'pointer',
-                            background: 'rgba(255,255,255,0.92)', color: C.navy,
-                            fontFamily: BRAND, fontSize: 10, letterSpacing: '0.03em', textTransform: 'uppercase',
-                            transition: 'all 0.15s',
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = C.navy; e.currentTarget.style.color = C.parchment; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.color = C.navy; }}
-                    >
-                        <HeartIcon /> Save
-                    </button>
+                    <div onClick={e => e.stopPropagation()} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <AddToWatchlistButton gemId={gem.id} auctionId={activeAuction?.id} size="sm" />
+                    </div>
                     <button
                         onClick={e => { e.stopPropagation(); handleClick(); }}
                         style={{
@@ -403,14 +393,9 @@ export const GemCardRow = ({ gem, onClick }) => {
                         cursor: 'pointer', transition: 'all 0.15s',
                     }}
                 >{isAuction ? 'Place Bid' : 'View'}</button>
-                <button onClick={e => { e.stopPropagation(); }}
-                    style={{
-                        width: '100%', padding: '7px 0', borderRadius: 4,
-                        border: `0.5px solid ${C.border}`, background: C.white, color: C.navy,
-                        fontFamily: BRAND, fontSize: 10, letterSpacing: '0.04em', textTransform: 'uppercase',
-                        cursor: 'pointer',
-                    }}
-                >Save</button>
+                <div onClick={e => e.stopPropagation()}>
+                    <AddToWatchlistButton gemId={gem.id} auctionId={activeAuction?.id} size="sm" />
+                </div>
             </div>
         </div>
     );

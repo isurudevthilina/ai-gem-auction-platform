@@ -7,18 +7,23 @@ import Select from '../Select';
 import FieldError from '../FieldError';
 
 const GEM_TYPES = [
-    'Blue Sapphire','Pink Sapphire','Yellow Sapphire','White Sapphire','Padparadscha Sapphire',
-    'Ruby','Alexandrite','Spinel (Red)','Spinel (Blue)','Spinel (Pink)',
-    'Emerald','Aquamarine',
-    'Tourmaline (Rubellite)','Tourmaline (Paraiba)','Tourmaline (Green)','Tourmaline (Watermelon)',
-    'Chrysoberyl','Tsavorite Garnet','Rhodolite Garnet','Hessonite Garnet','Demantoid Garnet','Alexandrite Garnet',
-    'Tanzanite','Amethyst','Citrine','Peridot','Topaz (Imperial)','Topaz (Blue)',
-    'Moonstone','Labradorite','Andalusite','Kornerupine','Zircon','Iolite','Sphene (Titanite)',
-    'Star Sapphire','Star Ruby','Cats Eye Chrysoberyl',
+    'Amethyst', 'Citrine', 'Pyrope Garnet',
+    'Ruby', 'Sapphire', 'Spinel', 'Topaz', 'Tourmaline',
 ];
-const CLARITY_OPTIONS = ['Eye Clean','Slightly Included (SI)','Moderately Included (MI)','Heavily Included (HI)','Opaque'];
-const CUT_OPTIONS = ['Round','Oval','Cushion','Pear','Emerald Cut','Marquise','Princess','Radiant','Cabochon','Heart','Trillion','Baguette','Asscher','Mixed Cut'];
-const TREATMENT_OPTIONS = ['Unheated (No Treatment)','Heat Treated','Beryllium Treated','Fracture Filled','Oiled','Irradiated','Diffusion','Coated'];
+const CLARITY_OPTIONS = [
+    'I1 (Included 1)',
+    'SI1 (Slightly Included 1)',
+    'SI2 (Slightly Included 2)',
+    'VS (Eye Clean 2)',
+    'VVS (Eye Clean 1)',
+];
+const CUT_OPTIONS = [
+    'Cushion', 'Fancy', 'Heart', 'Marquise', 'Octagon',
+    'Other', 'Oval', 'Pear', 'Round', 'Trillion',
+];
+const TREATMENT_OPTIONS = [
+    'Be Heated', 'Fracture Filled', 'Heated', 'Irradiated', 'Untreated',
+];
 const ORIGIN_OPTIONS = ['Sri Lanka (Ceylon)','Burma (Myanmar)','Madagascar','Thailand','Colombia','Brazil','Zambia','Tanzania','India','Afghanistan','Australia','Other'];
 
 const StepStoneDetails = ({ register, control, errors, watch, autoTitle, categories = [] }) => {

@@ -163,6 +163,20 @@ const Login = () => {
                     </div>
                 )}
 
+                <div style={{ textAlign: 'right', marginBottom: 12 }}>
+                    <button
+                        type="button"
+                        onClick={() => alert('Please contact support@gembid.lk to reset your password.')}
+                        style={{
+                            background: 'none', border: 'none', color: '#D4AF37',
+                            fontWeight: 700, cursor: 'pointer', padding: 0,
+                            fontSize: '0.82rem', fontFamily: "'Plus Jakarta Sans', sans-serif",
+                        }}
+                    >
+                        Forgot password?
+                    </button>
+                </div>
+
                 <button
                     type="submit"
                     disabled={loading}

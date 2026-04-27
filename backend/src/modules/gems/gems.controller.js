@@ -42,14 +42,12 @@ const aiValuate = catchAsync(async (req, res) => {
         confidence = mlData.confidence;
         is_mock = false;
     } catch {
-        // Fallback mock prediction
-        const BASE = { Sapphire: 400, Ruby: 600, Emerald: 500, Alexandrite: 900, Garnet: 100, Spinel: 200, Tourmaline: 250, Aquamarine: 150 };
-        const base = BASE[d.gem_type] || 300;
-        const carat = d.carat_weight || 1;
-        predicted_price = Math.round(base * carat * (1 + Math.random() * 0.3));
-        shap_values = { gem_type: base * 0.3, carat_weight: carat * 50, color: 30, clarity: 20, cut: 15, origin: 25, treatment: -10 };
-        confidence = 0.72;
-        is_mock = true;
+        // ML service unavailable — return clear error instead of fake data
+        return res.status(503).json({
+            success: false,
+            message: 'AI valuation service is temporarily unavailable. Please try again in a moment.',
+            error_code: 'ML_SERVICE_UNAVAILABLE',
+        });
     }
 
     res.json({ success: true, data: { predicted_price, shap_values, confidence, is_mock } });

@@ -32,6 +32,15 @@ const authenticate = async (req, _res, next) => {
         }
 
         req.user = profile;
+
+        // Track last activity (fire-and-forget, don't block request)
+        try {
+            await supabaseAdmin
+                .from('profiles')
+                .update({ last_activity_at: new Date().toISOString() })
+                .eq('id', profile.id);
+        } catch { /* ignore tracking failures */ }
+
         next();
     } catch (err) {
         next(err);
@@ -75,7 +84,10 @@ const optionalAuth = async (req, res, next) => {
                 .single();
             if (profile) req.user = profile;
         }
-    } catch (_) { /* silent */ }
+    } catch (err) {
+        // Log token validation errors for observability, but still allow guest access
+        console.warn('optionalAuth: token validation failed —', err.message);
+    }
     next();
 };
 

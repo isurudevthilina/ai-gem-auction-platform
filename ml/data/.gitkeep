@@ -1,0 +1,2 @@
+# Drop your xlsx dataset file here (e.g. gems.xlsx)
+# Then run: python train.py --data data/gems.xlsx

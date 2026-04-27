@@ -2,6 +2,12 @@ const repository = require('./reviews.repository');
 const { supabaseAdmin } = require('../../config/supabase');
 const ApiError = require('../../utils/apiError');
 
+// Simple XSS sanitization — strip HTML tags from user input
+const sanitizeHtml = (str) => {
+    if (typeof str !== 'string') return str;
+    return str.replace(/<[^>]*>/g, '');
+};
+
 const REVIEW_WINDOW_MONTHS = 3;
 const MAX_REVIEW_EDITS = 3;
 const MAX_REVIEW_MEDIA_ITEMS = 6;
@@ -73,7 +79,7 @@ const createReview = async (reviewerId, data) => {
     seller_id: txn.seller_id,
     transaction_id: data.transaction_id,
     rating: data.rating,
-    comment: data.comment,
+    comment: sanitizeHtml(data.comment),
     media_urls: data.media_urls || [],
     post_sequence: Number(postSequence || 1),
   });
@@ -162,6 +168,7 @@ const updateReview = async (reviewerId, reviewId, data) => {
 
   return await repository.update(reviewId, reviewerId, {
     ...data,
+    comment: sanitizeHtml(data.comment),
     edit_count: editCount + 1,
   });
 };

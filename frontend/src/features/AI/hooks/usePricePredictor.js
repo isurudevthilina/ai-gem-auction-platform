@@ -5,9 +5,9 @@
  * Steps:
  *   0 → Landing / entry screen
  *   1 → Gem Family selection
- *   2 → Physical properties (carat, cut)
- *   3 → Quality grading (clarity, color, treatment)
- *   4 → Origin + review summary
+ *   2 → Shape selection
+ *   3 → Carat weight
+ *   4 → Quality grading (clarity, color, treatment)
  *   5 → Result / SHAP output
  */
 import { useState, useCallback } from 'react';
@@ -16,13 +16,12 @@ import { predictGemPrice } from '../services/aiPredictorService';
 const TOTAL_STEPS = 4; // steps 1-4 (step 0 is the landing)
 
 const INITIAL_FORM = {
-    gemFamily: '',
+    gemFamily:   '',
+    shape:       '',
     caratWeight: '',
-    cut: '',
-    clarity: '',
-    color: '',
-    treatment: '',
-    origin: '',
+    clarity:     '',
+    color:       '',
+    treatment:   '',
 };
 
 export const usePricePredictor = (initialParams = {}) => {
@@ -37,10 +36,6 @@ export const usePricePredictor = (initialParams = {}) => {
     // ─── Field updater ───────────────────────────────────────────────────────
     const updateField = useCallback((field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
-        // When gem family changes, reset color selection (options are family-specific)
-        if (field === 'gemFamily') {
-            setFormData((prev) => ({ ...prev, gemFamily: value, color: '' }));
-        }
     }, []);
 
     // ─── Navigation ──────────────────────────────────────────────────────────
@@ -61,9 +56,10 @@ export const usePricePredictor = (initialParams = {}) => {
         try {
             const prediction = await predictGemPrice(formData);
             setResult(prediction);
-            setStep(5); // move to result screen
+            setStep(5);
         } catch (err) {
-            setError('Prediction failed. Please try again.');
+            console.error('Prediction error:', err);
+            setError(err?.message || 'Prediction failed. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -81,9 +77,9 @@ export const usePricePredictor = (initialParams = {}) => {
     const isStepValid = useCallback(() => {
         switch (step) {
             case 1: return !!formData.gemFamily;
-            case 2: return !!formData.caratWeight && parseFloat(formData.caratWeight) > 0 && !!formData.cut;
-            case 3: return !!formData.clarity && !!formData.color && !!formData.treatment;
-            case 4: return !!formData.origin;
+            case 2: return !!formData.shape;
+            case 3: return !!formData.caratWeight && parseFloat(formData.caratWeight) > 0;
+            case 4: return !!formData.clarity && !!formData.color && !!formData.treatment;
             default: return true;
         }
     }, [step, formData]);

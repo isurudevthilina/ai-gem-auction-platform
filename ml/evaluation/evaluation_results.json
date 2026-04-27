@@ -1,0 +1,146 @@
+{
+  "Dataset_Stats": {
+    "Total_Samples": 21998,
+    "Train_Samples": 17598,
+    "Test_Samples": 4400,
+    "Features": [
+      "type",
+      "shape",
+      "color",
+      "clarity",
+      "treatment",
+      "carat_weight"
+    ],
+    "Price_LKR_Min": 117.21,
+    "Price_LKR_Max": 18861961.82,
+    "Price_LKR_Mean": 39141.26,
+    "Price_LKR_Median": 12911.89,
+    "Price_LKR_Std": 216365.9,
+    "Log_Price_Mean": 9.621,
+    "Log_Price_Std": 1.1298
+  },
+  "Regression_Metrics_LogSpace": {
+    "Log_Train_MAE": 0.1578,
+    "Log_Train_RMSE": 0.2432,
+    "Log_Train_R2": 0.9537,
+    "Log_Train_Explained_Variance": 0.9537,
+    "Log_Train_Median_AE": 0.0975,
+    "Log_Train_MAPE_pct": 1.61,
+    "Log_Test_MAE": 0.1558,
+    "Log_Test_RMSE": 0.2371,
+    "Log_Test_R2": 0.9556,
+    "Log_Test_Explained_Variance": 0.9556,
+    "Log_Test_Median_AE": 0.0984,
+    "Log_Test_MAPE_pct": 1.6
+  },
+  "Regression_Metrics_LKRSpace": {
+    "LKR_Train_MAE": 10067.437,
+    "LKR_Train_RMSE": 131434.7937,
+    "LKR_Train_R2": 0.6624,
+    "LKR_Train_Explained_Variance": 0.6629,
+    "LKR_Train_Median_AE": 1179.7904,
+    "LKR_Train_MAPE_pct": 16.36,
+    "LKR_Test_MAE": 8721.3014,
+    "LKR_Test_RMSE": 53518.5552,
+    "LKR_Test_R2": 0.9026,
+    "LKR_Test_Explained_Variance": 0.9031,
+    "LKR_Test_Median_AE": 1166.5399,
+    "LKR_Test_MAPE_pct": 16.21
+  },
+  "Classification_Metrics_PriceTiers": {
+    "Overall_Accuracy": 0.887,
+    "Overall_Precision": 0.8872,
+    "Overall_Recall": 0.887,
+    "Overall_F1": 0.8868,
+    "Per_Tier": {
+      "Budget": {
+        "Precision": 0.9211,
+        "Recall": 0.9011,
+        "F1": 0.911,
+        "Support": 1698
+      },
+      "Affordable": {
+        "Precision": 0.8778,
+        "Recall": 0.907,
+        "F1": 0.8922,
+        "Support": 2107
+      },
+      "Mid-Range": {
+        "Precision": 0.8149,
+        "Recall": 0.7832,
+        "F1": 0.7987,
+        "Support": 489
+      },
+      "Premium": {
+        "Precision": 0.8354,
+        "Recall": 0.75,
+        "F1": 0.7904,
+        "Support": 88
+      },
+      "Luxury": {
+        "Precision": 1.0,
+        "Recall": 0.7222,
+        "F1": 0.8387,
+        "Support": 18
+      }
+    },
+    "Confusion_Matrix": [
+      [
+        1530,
+        168,
+        0,
+        0,
+        0
+      ],
+      [
+        131,
+        1911,
+        65,
+        0,
+        0
+      ],
+      [
+        0,
+        98,
+        383,
+        8,
+        0
+      ],
+      [
+        0,
+        0,
+        22,
+        66,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        5,
+        13
+      ]
+    ],
+    "Tier_Labels": [
+      "Budget",
+      "Affordable",
+      "Mid-Range",
+      "Premium",
+      "Luxury"
+    ]
+  },
+  "Feature_Importance": {
+    "treatment": 0.2918,
+    "type": 0.2757,
+    "carat_weight": 0.219,
+    "color": 0.0753,
+    "clarity": 0.0744,
+    "shape": 0.0637
+  },
+  "Model_Info": {
+    "Model_Type": "XGBoostRegressor",
+    "Target": "Log_Price (natural log of LKR)",
+    "Output_Currency": "LKR",
+    "Evaluation_Date": "2026-04-26T03:11:03.557178"
+  }
+}

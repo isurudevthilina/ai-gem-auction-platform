@@ -1,0 +1,256 @@
+erDiagram
+    PROFILES ||--o{ GEMS : creates
+    PROFILES ||--o{ AUCTIONS : manages
+    PROFILES ||--o{ BIDS : places
+    PROFILES ||--o{ TRANSACTIONS : buyer_or_seller
+    PROFILES ||--o{ NOTIFICATIONS : receives
+    PROFILES ||--o{ WATCHLIST_FOLDERS : owns
+    PROFILES ||--o{ WATCHLIST : saves
+    PROFILES ||--o{ CERTIFICATES : uploads
+    PROFILES ||--o{ REVIEWS : writes
+    PROFILES ||--o{ REVIEWS : receives
+    PROFILES ||--o{ REVIEW_REPORTS : reports_or_reviewed
+    PROFILES ||--o| WALLETS : owns
+    PROFILES ||--o{ WALLET_TOPUPS : makes
+    PROFILES ||--o{ WALLET_HOLDS : locks
+    PROFILES ||--o{ WALLET_GEM_PURCHASES : purchases
+    PROFILES ||--o{ WALLET_WITHDRAWALS : requests
+
+    CATEGORIES ||--o{ CATEGORIES : parent_child
+    CATEGORIES ||--o{ GEMS : categorizes
+
+    GEMS ||--o| AUCTIONS : auction_listing
+    GEMS ||--o{ TRANSACTIONS : sold_through
+    GEMS ||--o| CERTIFICATES : verified_by
+    GEMS ||--o{ WALLET_GEM_PURCHASES : purchased_as_store_item
+
+    AUCTIONS ||--o{ BIDS : receives
+    AUCTIONS ||--o{ WATCHLIST : tracked_by
+    AUCTIONS ||--o{ TRANSACTIONS : creates_sale
+    AUCTIONS ||--o{ WALLET_HOLDS : requires_deposit
+    AUCTIONS ||--o{ SECOND_CHANCE_OFFERS : may_generate
+
+    TRANSACTIONS ||--o{ REVIEWS : enables
+    TRANSACTIONS ||--o{ SECOND_CHANCE_OFFERS : original_sale
+    WATCHLIST_FOLDERS ||--o{ WATCHLIST : groups
+    REVIEWS ||--o{ REVIEW_REPORTS : may_be_reported
+
+    PROFILES {
+        uuid id PK
+        text email
+        text full_name
+        text role "admin | seller | buyer"
+        text avatar_url
+        boolean is_verified
+        text phone_number
+        text district
+        text province
+        text city
+        text business_name
+        timestamptz last_login_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    CATEGORIES {
+        uuid id PK
+        text name
+        text slug
+        text description
+        uuid parent_id FK
+    }
+
+    GEMS {
+        uuid id PK
+        uuid seller_id FK
+        uuid category_id FK
+        text title
+        text description
+        numeric carat_weight
+        text color
+        text clarity
+        text shape
+        text treatment
+        text certification
+        text image_url
+        text listing_type "auction | direct_sell"
+        text status "draft | listed | in_auction | sold"
+        numeric buy_now_price
+        numeric predicted_price
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    AUCTIONS {
+        uuid id PK
+        uuid gem_id FK
+        uuid seller_id FK
+        numeric starting_price
+        numeric reserve_price
+        numeric current_price
+        numeric min_bid_increment
+        timestamptz start_time
+        timestamptz end_time
+        text status
+        uuid winner_id FK
+        integer bid_count
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    BIDS {
+        uuid id PK
+        uuid auction_id FK
+        uuid bidder_id FK
+        numeric amount
+        boolean is_winning
+        timestamptz created_at
+    }
+
+    TRANSACTIONS {
+        uuid id PK
+        uuid auction_id FK
+        uuid gem_id FK
+        uuid buyer_id FK
+        uuid seller_id FK
+        numeric amount
+        text type "auction_win | buy_now"
+        text status "pending | completed | disputed | refunded"
+        text payment_reference
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    NOTIFICATIONS {
+        uuid id PK
+        uuid user_id FK
+        text type
+        text title
+        text message
+        jsonb data
+        boolean is_read
+        timestamptz created_at
+    }
+
+    WATCHLIST_FOLDERS {
+        uuid id PK
+        uuid user_id FK
+        text name
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    WATCHLIST {
+        uuid id PK
+        uuid user_id FK
+        uuid auction_id FK
+        uuid folder_id FK
+        timestamptz created_at
+    }
+
+    CERTIFICATES {
+        uuid id PK
+        uuid gem_id FK
+        uuid seller_id FK
+        text certificate_number
+        text issued_by
+        date issued_date
+        text document_url
+        text status "pending | verified | rejected"
+        uuid verified_by FK
+        timestamptz verified_at
+        text notes
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    REVIEWS {
+        uuid id PK
+        uuid reviewer_id FK
+        uuid seller_id FK
+        uuid transaction_id FK
+        integer rating
+        text comment
+        integer post_sequence
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    REVIEW_REPORTS {
+        uuid id PK
+        uuid review_id FK
+        uuid reporter_id FK
+        uuid reviewer_id FK
+        uuid seller_id FK
+        text reason
+        text status "open | dismissed | removed"
+        uuid resolved_by FK
+        timestamptz resolved_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    WALLETS {
+        uuid id PK
+        uuid user_id FK
+        numeric available_balance
+        numeric locked_balance
+        integer gem_balance
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    WALLET_TOPUPS {
+        uuid id PK
+        uuid user_id FK
+        numeric amount
+        text card_last4
+        text payment_reference
+        jsonb metadata
+        timestamptz created_at
+    }
+
+    WALLET_HOLDS {
+        uuid id PK
+        uuid user_id FK
+        uuid auction_id FK
+        numeric bid_amount
+        numeric deposit_amount
+        text status "locked | released | transferred"
+        timestamptz released_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    SECOND_CHANCE_OFFERS {
+        uuid id PK
+        uuid auction_id FK
+        uuid transaction_id FK
+        uuid original_winner_id FK
+        uuid next_bidder_id FK
+        uuid seller_id FK
+        numeric amount
+        text status "pending | accepted | expired | cancelled"
+        timestamptz expires_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    WALLET_GEM_PURCHASES {
+        uuid id PK
+        uuid user_id FK
+        uuid gem_id FK
+        integer gems_spent
+        text purchase_reference
+        timestamptz created_at
+    }
+
+    WALLET_WITHDRAWALS {
+        uuid id PK
+        uuid user_id FK
+        numeric amount
+        text bank_name
+        text account_last4
+        text status "pending | approved | rejected"
+        timestamptz created_at
+    }

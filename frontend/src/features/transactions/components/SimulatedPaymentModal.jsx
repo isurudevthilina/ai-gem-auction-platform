@@ -79,8 +79,18 @@ const SimulatedPaymentModal = ({ transaction, isOpen, onClose }) => {
       background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
+      {/* Demo mode banner */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0,
+        background: 'linear-gradient(90deg,#1A4D8C,#C4892A)',
+        color: '#fff', textAlign: 'center', padding: '8px 16px',
+        fontFamily: DISPLAY, fontSize: '0.7rem', letterSpacing: '0.08em',
+        textTransform: 'uppercase', zIndex: 1001,
+      }}>
+        💳 Demo Mode — No real payments are processed
+      </div>
       <div onClick={(e) => e.stopPropagation()} style={{
-        background: C.white, borderRadius: 16, padding: 32, width: '100%', maxWidth: 480,
+        background: C.white, borderRadius: 16, padding: 32, width: '100%', maxWidth: 480, marginTop: 32,
         boxShadow: '0 20px 50px rgba(0,0,0,0.12)',
       }}>
 

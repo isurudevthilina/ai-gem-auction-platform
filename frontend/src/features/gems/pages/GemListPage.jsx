@@ -34,17 +34,16 @@ const SORT_OPTIONS = [
 ];
 
 const SHAPE_OPTIONS = [
-    'Round', 'Oval', 'Cushion', 'Pear', 'Emerald Cut', 'Marquise',
-    'Princess', 'Radiant', 'Cabochon', 'Heart', 'Trillion', 'Baguette',
-    'Asscher', 'Mixed Cut',
+    'Cushion', 'Fancy', 'Heart', 'Marquise', 'Octagon',
+    'Other', 'Oval', 'Pear', 'Round', 'Trillion',
 ];
 
 const CLARITY_OPTIONS = [
-    { value: 'Eye Clean', label: 'Eye Clean', sub: 'Best clarity' },
-    { value: 'Slightly Included (SI)', label: 'Slightly Included (SI)' },
-    { value: 'Moderately Included (MI)', label: 'Moderately Included (MI)' },
-    { value: 'Heavily Included (HI)', label: 'Heavily Included (HI)' },
-    { value: 'Opaque', label: 'Opaque' },
+    { value: 'VVS (Eye Clean 1)', label: 'VVS (Eye Clean 1)', sub: 'Best clarity' },
+    { value: 'VS (Eye Clean 2)', label: 'VS (Eye Clean 2)' },
+    { value: 'SI1 (Slightly Included 1)', label: 'SI1 (Slightly Included 1)' },
+    { value: 'SI2 (Slightly Included 2)', label: 'SI2 (Slightly Included 2)' },
+    { value: 'I1 (Included 1)', label: 'I1 (Included 1)' },
 ];
 
 const COLOR_SWATCHES = [
@@ -60,30 +59,26 @@ const COLOR_SWATCHES = [
 ];
 
 const ORIGIN_OPTIONS = [
-    { label: 'Sri Lanka (Ceylon)', value: 'Sri Lanka', dot: '#1a4d8c' },
-    { label: 'Myanmar', value: 'Myanmar' },
-    { label: 'Colombia', value: 'Colombia' },
-    { label: 'Thailand', value: 'Thailand' },
+    { label: 'Sri Lanka (Ceylon)', value: 'Sri Lanka (Ceylon)', dot: '#1a4d8c' },
+    { label: 'Burma (Myanmar)', value: 'Burma (Myanmar)' },
     { label: 'Madagascar', value: 'Madagascar' },
-    { label: 'Tanzania', value: 'Tanzania' },
+    { label: 'Thailand', value: 'Thailand' },
+    { label: 'Colombia', value: 'Colombia' },
     { label: 'Brazil', value: 'Brazil' },
+    { label: 'Zambia', value: 'Zambia' },
+    { label: 'Tanzania', value: 'Tanzania' },
     { label: 'India', value: 'India' },
     { label: 'Afghanistan', value: 'Afghanistan' },
-    { label: 'Mozambique', value: 'Mozambique' },
-    { label: 'Kenya', value: 'Kenya' },
-    { label: 'Zambia', value: 'Zambia' },
     { label: 'Australia', value: 'Australia' },
+    { label: 'Other', value: 'Other' },
 ];
 
 const TREATMENT_OPTIONS = [
-    { label: 'Unheated (No Treatment)', value: 'None', dot: '#16a34a' },
-    { label: 'Heat Treated', value: 'Heat Treated' },
+    { label: 'Untreated', value: 'Untreated', dot: '#16a34a' },
+    { label: 'Heated', value: 'Heated' },
+    { label: 'Be Heated', value: 'Be Heated' },
     { label: 'Fracture Filled', value: 'Fracture Filled' },
-    { label: 'Irradiation', value: 'Irradiation' },
-    { label: 'Oiling', value: 'Oiling' },
-    { label: 'Diffusion', value: 'Diffusion' },
-    { label: 'Coating', value: 'Coating' },
-    { label: 'Dyeing', value: 'Dyeing' },
+    { label: 'Irradiated', value: 'Irradiated' },
 ];
 
 const CARAT_PRESETS = [

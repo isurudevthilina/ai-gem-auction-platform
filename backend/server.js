@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const dotenv = require('dotenv');
 
 // Load environment variables FIRST
@@ -8,6 +9,7 @@ dotenv.config();
 // Now import Supabase config (which needs the env vars)
 const { testConnection, ensureStorageBuckets } = require('./src/config/supabase');
 const errorHandler = require('./src/middleware/errorHandler');
+const { generalLimiter, authLimiter, bidLimiter } = require('./src/middleware/rateLimiter');
 const { runAuctionCompletionCron } = require('./src/modules/auctions/auctionCompletion.cron');
 
 // Test Supabase connection & ensure storage buckets
@@ -17,7 +19,9 @@ ensureStorageBuckets().catch(err => console.error('❌ ensureStorageBuckets fail
 // Initialize Express app
 const app = express();
 
-// Middleware
+// Security middleware
+app.use(helmet());
+
 const allowedOrigins = [
     process.env.CLIENT_URL,
     'http://localhost:5173',
@@ -36,6 +40,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(generalLimiter);
 
 // Request logging middleware (development)
 if (process.env.NODE_ENV === 'development') {
@@ -46,11 +51,11 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // Routes
-app.use('/api/v1/auth', require('./src/modules/auth/auth.routes'));
+app.use('/api/v1/auth', authLimiter, require('./src/modules/auth/auth.routes'));
 app.use('/api/users', require('./src/modules/users/users.routes'));
 app.use('/api/gems', require('./src/modules/gems/gems.routes'));
 app.use('/api/auctions', require('./src/modules/auctions/auctions.routes'));
-app.use('/api/auctions/:id/bids', require('./src/modules/auctions/bids.routes'));
+app.use('/api/auctions/:id/bids', bidLimiter, require('./src/modules/auctions/bids.routes'));
 app.use('/api/bids', require('./src/modules/auctions/bids.personal.routes'));
 app.use('/api/watchlist', require('./src/modules/watchlist/watchlist.routes'));
 app.use('/api/wallet', require('./src/modules/wallet/wallet.routes'));
@@ -59,6 +64,7 @@ app.use('/api/certificates', require('./src/modules/certificates/certificates.ro
 app.use('/api/transactions', require('./src/modules/transactions/transactions.routes'));
 app.use('/api/admin', require('./src/modules/admin/admin.routes'));
 app.use('/api/notifications', require('./src/modules/notifications/notifications.routes'));
+app.use('/api/ml', require('./src/modules/ml/ml.routes'));
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -93,39 +99,42 @@ app.use((req, res) => {
 // Global error handler
 app.use(errorHandler);
 
-// Start server
-const PORT = process.env.PORT || 5000;
+// Start server (only in non-test environments so Jest can import the app cleanly)
+let server;
+if (process.env.NODE_ENV !== 'test') {
+    const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => {
-    console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-    console.log(`📍 API URL: http://localhost:${PORT}`);
-    console.log(`🌐 Client URLs: ${allowedOrigins.join(', ')}`);
-});
+    server = app.listen(PORT, () => {
+        console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+        console.log(`📍 API URL: http://localhost:${PORT}`);
+        console.log(`🌐 Client URLs: ${allowedOrigins.join(', ')}`);
+    });
 
-// ── Auction expiry cron — call complete_expired_auctions() every 30s ──
-const AUCTION_CRON_INTERVAL = 30_000;
-const runAuctionCron = async () => {
-    try {
-        const result = await runAuctionCompletionCron();
-        if (result.skipped) {
-            return;
+    // ── Auction expiry cron — call complete_expired_auctions() every 30s ──
+    const AUCTION_CRON_INTERVAL = 30_000;
+    const runAuctionCron = async () => {
+        try {
+            const result = await runAuctionCompletionCron();
+            if (result.skipped) {
+                return;
+            }
+
+            if (result.completed > 0 || result.repaired > 0) {
+                console.log(`⏱ Auction cron: completed ${result.completed} expired auction(s), repaired ${result.repaired} winner mismatch(es)`);
+            }
+        } catch (err) {
+            console.error('⏱ Auction cron exception:', err.message);
         }
+    };
+    runAuctionCron(); // run once on startup
+    setInterval(runAuctionCron, AUCTION_CRON_INTERVAL);
 
-        if (result.completed > 0 || result.repaired > 0) {
-            console.log(`⏱ Auction cron: completed ${result.completed} expired auction(s), repaired ${result.repaired} winner mismatch(es)`);
-        }
-    } catch (err) {
-        console.error('⏱ Auction cron exception:', err.message);
-    }
-};
-runAuctionCron(); // run once on startup
-setInterval(runAuctionCron, AUCTION_CRON_INTERVAL);
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
-    console.log(`❌ Unhandled Rejection: ${err.message}`);
-    // Close server & exit process
-    server.close(() => process.exit(1));
-});
+    // Handle unhandled promise rejections
+    process.on('unhandledRejection', (err, promise) => {
+        console.log(`❌ Unhandled Rejection: ${err.message}`);
+        // Close server & exit process
+        server.close(() => process.exit(1));
+    });
+}
 
 module.exports = app;

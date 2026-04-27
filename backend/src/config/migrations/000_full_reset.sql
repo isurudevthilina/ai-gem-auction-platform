@@ -114,6 +114,7 @@ CREATE TABLE public.profiles (
     business_address             TEXT,
     email_verified               BOOLEAN DEFAULT FALSE,
     last_login_at                TIMESTAMPTZ,
+    last_activity_at             TIMESTAMPTZ,
     created_at                   TIMESTAMPTZ DEFAULT NOW(),
     updated_at                   TIMESTAMPTZ DEFAULT NOW()
 );
@@ -275,26 +276,24 @@ CREATE TABLE public.gems (
     carat_weight       NUMERIC(8,3) CHECK (carat_weight > 0),
     color              TEXT,
     clarity            TEXT CHECK (clarity IN (
-                           'Eye Clean',
-                           'Slightly Included (SI)',
-                           'Moderately Included (MI)',
-                           'Heavily Included (HI)',
-                           'Opaque'
+                           'I1 (Included 1)',
+                           'SI1 (Slightly Included 1)',
+                           'SI2 (Slightly Included 2)',
+                           'VS (Eye Clean 2)',
+                           'VVS (Eye Clean 1)'
                        )),
     cut                TEXT CHECK (cut IN (
-                           'Round','Oval','Cushion','Pear','Emerald Cut',
-                           'Marquise','Princess','Radiant','Cabochon',
-                           'Heart','Trillion','Baguette','Asscher','Mixed Cut'
+                           'Cushion','Fancy','Heart','Marquise','Octagon',
+                           'Other','Oval','Pear','Round','Trillion'
                        )),
     origin             TEXT CHECK (origin IN (
                            'Sri Lanka (Ceylon)','Burma (Myanmar)','Madagascar',
                            'Thailand','Colombia','Brazil','Zambia','Tanzania',
                            'India','Afghanistan','Australia','Other'
                        )),
-    treatment          TEXT DEFAULT 'Unheated (No Treatment)' CHECK (treatment IN (
-                           'Unheated (No Treatment)','Heat Treated',
-                           'Beryllium Treated','Fracture Filled',
-                           'Oiled','Irradiated','Diffusion','Coated'
+    treatment          TEXT DEFAULT 'Untreated' CHECK (treatment IN (
+                           'Be Heated','Fracture Filled',
+                           'Heated','Irradiated','Untreated'
                        )),
     certification      TEXT,
     certification_body TEXT,
