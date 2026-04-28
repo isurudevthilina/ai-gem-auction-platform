@@ -8,7 +8,9 @@ const DISPLAY = "'Cinzel',serif";
 const BODY = "'Jost','Inter',sans-serif";
 
 const FolderSidebar = ({ folders, activeFolder, onSelectFolder, onCreateClick, isLoading, onRename, onDelete }) => {
-    const realFolderCount = (folders || []).filter((f) => f.id !== 'all' && f.id !== 'uncategorized').length;
+    const realFolderCount = (folders || []).filter((f) =>
+        f.id !== 'all' && f.id !== 'uncategorized' && !f.is_system
+    ).length;
 
     return (
         <div style={{
@@ -43,17 +45,18 @@ const FolderSidebar = ({ folders, activeFolder, onSelectFolder, onCreateClick, i
                     }} />
                 ))
             ) : (
-                (folders || []).map((folder, idx) => (
+                (folders || []).map((folder) => (
                     <div key={folder.id}>
                         <FolderCard
                             folder={folder}
                             isActive={folder.id === activeFolder}
-                            isVirtual={folder.id === 'all' || folder.id === 'uncategorized'}
+                            isVirtual={folder.id === 'all' || folder.id === 'uncategorized' || folder.is_system}
                             onClick={() => onSelectFolder(folder.id)}
                             onRename={onRename}
                             onDelete={onDelete}
                         />
-                        {folder.id === 'uncategorized' && (
+                        {/* Divider before the "Ended" system folder */}
+                        {folder.is_system && folder.name === 'Ended' && (
                             <div style={{ height: 1, background: C.border, margin: '6px 18px' }} />
                         )}
                     </div>

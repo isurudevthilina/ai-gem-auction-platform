@@ -6,11 +6,21 @@ const getFolders = async (userId) => {
     const totalCount = await repository.countAll(userId);
     const uncategorizedCount = await repository.countByFolder(userId, null);
 
-    return [
+    const endedFolder = realFolders.find((f) => f.is_system && f.name === 'Ended');
+    const userFolders = realFolders.filter((f) => !(f.is_system && f.name === 'Ended'));
+
+    const result = [
         { id: 'all', name: 'All Saved', gem_count: totalCount },
         { id: 'uncategorized', name: 'Uncategorized', gem_count: uncategorizedCount },
-        ...realFolders,
+        ...userFolders,
     ];
+
+    if (endedFolder) {
+        const endedCount = await repository.countByFolder(userId, endedFolder.id);
+        result.push({ ...endedFolder, gem_count: endedCount });
+    }
+
+    return result;
 };
 
 const createFolder = async (userId, name) => {
@@ -20,6 +30,9 @@ const createFolder = async (userId, name) => {
 const renameFolder = async (folderId, userId, name) => {
     if (folderId === 'all' || folderId === 'uncategorized') {
         throw new ApiError(400, 'Cannot rename this folder');
+    }
+    if (name.trim() === 'Ended') {
+        throw new ApiError(400, 'Folder name not allowed');
     }
     return repository.renameFolder(folderId, userId, name);
 };

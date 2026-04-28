@@ -88,7 +88,8 @@ const AddToWatchlistButton = ({ gemId, auctionId, size = 'md' }) => {
     };
 
     const isSm = size === 'sm';
-    const availableFolders = (folders || []).filter((f) => f.id !== 'all');
+    // Hide "All Saved" and system folders like "Ended" from the save dropdown
+    const availableFolders = (folders || []).filter((f) => f.id !== 'all' && !f.is_system);
 
     const btnStyle = inWatchlist
         ? {
@@ -162,7 +163,7 @@ const AddToWatchlistButton = ({ gemId, auctionId, size = 'md' }) => {
                     isOpen={showCreateModal}
                     onClose={() => setShowCreateModal(false)}
                     mode="create"
-                    existingFolders={(folders || []).filter(f => f.id !== 'all' && f.id !== 'uncategorized')}
+                    existingFolders={(folders || []).filter(f => f.id !== 'all' && f.id !== 'uncategorized' && !f.is_system)}
                     onSubmit={async (name) => {
                         await createFolderMutation.mutateAsync(name);
                         setShowCreateModal(false);

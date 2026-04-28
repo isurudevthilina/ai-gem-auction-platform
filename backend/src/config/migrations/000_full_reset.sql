@@ -127,15 +127,23 @@ CREATE TRIGGER profiles_set_updated_at
 -- Trigger function: auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+    new_user_id UUID := NEW.id;
 BEGIN
     INSERT INTO public.profiles (id, email, full_name, role)
     VALUES (
-        NEW.id,
+        new_user_id,
         NEW.email,
         COALESCE(NEW.raw_user_meta_data ->> 'full_name', ''),
         COALESCE(NEW.raw_user_meta_data ->> 'role', 'buyer')
     )
     ON CONFLICT (id) DO NOTHING;
+
+    -- Auto-create the system "Ended" folder for every new user
+    INSERT INTO public.watchlist_folders (user_id, name, is_system)
+    VALUES (new_user_id, 'Ended', true)
+    ON CONFLICT DO NOTHING;
+
     RETURN NEW;
 END;
 $$;
@@ -516,6 +524,7 @@ CREATE TABLE public.watchlist_folders (
     id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id    UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     name       TEXT NOT NULL DEFAULT 'My Watchlist',
+    is_system  BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -1482,6 +1491,89 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authentic
 
 
 -- ════════════════════════════════════════════════════════════════════════════════
+-- Watchlist "Ended" Folder Automation
+-- ════════════════════════════════════════════════════════════════════════════════
+
+-- Helper: ensure a user has a system "Ended" folder.
+CREATE OR REPLACE FUNCTION public.ensure_ended_folder(user_uuid UUID)
+RETURNS UUID AS $$
+DECLARE
+    ended_folder_id UUID;
+BEGIN
+    SELECT id INTO ended_folder_id
+    FROM public.watchlist_folders
+    WHERE user_id = user_uuid AND name = 'Ended' AND is_system = true;
+
+    IF ended_folder_id IS NULL THEN
+        INSERT INTO public.watchlist_folders (user_id, name, is_system)
+        VALUES (user_uuid, 'Ended', true)
+        RETURNING id INTO ended_folder_id;
+    END IF;
+
+    RETURN ended_folder_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger: move watchlist items to "Ended" when a gem reaches a terminal status.
+CREATE OR REPLACE FUNCTION public.trigger_gem_ended_watchlist()
+RETURNS TRIGGER AS $$
+DECLARE
+    wl_record RECORD;
+    ended_id UUID;
+BEGIN
+    IF NEW.status IN ('sold', 'unlisted', 'draft') AND
+       (OLD.status IS NULL OR OLD.status NOT IN ('sold', 'unlisted', 'draft')) THEN
+
+        FOR wl_record IN
+            SELECT id, user_id FROM public.watchlist WHERE gem_id = NEW.id
+        LOOP
+            ended_id := public.ensure_ended_folder(wl_record.user_id);
+            UPDATE public.watchlist SET folder_id = ended_id WHERE id = wl_record.id;
+        END LOOP;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER gems_ended_watchlist
+    AFTER UPDATE OF status ON public.gems
+    FOR EACH ROW
+    WHEN (OLD.status IS DISTINCT FROM NEW.status)
+    EXECUTE FUNCTION public.trigger_gem_ended_watchlist();
+
+-- Trigger: move watchlist items to "Ended" when an auction reaches a terminal status.
+CREATE OR REPLACE FUNCTION public.trigger_auction_ended_watchlist()
+RETURNS TRIGGER AS $$
+DECLARE
+    wl_record RECORD;
+    ended_id UUID;
+BEGIN
+    IF NEW.status IN ('completed', 'cancelled', 'reserve_not_met') AND
+       (OLD.status IS NULL OR OLD.status NOT IN ('completed', 'cancelled', 'reserve_not_met')) THEN
+
+        FOR wl_record IN
+            SELECT DISTINCT id, user_id
+            FROM public.watchlist
+            WHERE auction_id = NEW.id OR gem_id = NEW.gem_id
+        LOOP
+            ended_id := public.ensure_ended_folder(wl_record.user_id);
+            UPDATE public.watchlist SET folder_id = ended_id WHERE id = wl_record.id;
+        END LOOP;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER auctions_ended_watchlist
+    AFTER UPDATE OF status ON public.auctions
+    FOR EACH ROW
+    WHEN (OLD.status IS DISTINCT FROM NEW.status)
+    EXECUTE FUNCTION public.trigger_auction_ended_watchlist();
+
+
+-- ════════════════════════════════════════════════════════════════════════════════
 -- DONE!
 -- ════════════════════════════════════════════════════════════════════════════════
 -- After running this migration:
@@ -1507,5 +1599,6 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authentic
 --   place_bid(), complete_expired_auctions(), buy_now()
 --
 -- Trigger functions created:
---   set_updated_at(), handle_new_user(), update_last_login()
+--   set_updated_at(), handle_new_user(), update_last_login(),
+--   ensure_ended_folder(), trigger_gem_ended_watchlist(), trigger_auction_ended_watchlist()
 -- ════════════════════════════════════════════════════════════════════════════════

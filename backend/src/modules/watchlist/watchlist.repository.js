@@ -10,6 +10,17 @@ const WATCHLIST_SELECT = `
     auction:auctions(id, current_price, end_time, status, bid_count)
 `;
 
+const getFolderById = async (folderId, userId) => {
+    const { data, error } = await supabaseAdmin
+        .from('watchlist_folders')
+        .select('*')
+        .eq('id', folderId)
+        .eq('user_id', userId)
+        .maybeSingle();
+    if (error) throw new ApiError(500, error.message);
+    return data;
+};
+
 const getFolders = async (userId) => {
     const { data: folders, error } = await supabaseAdmin
         .from('watchlist_folders')
@@ -34,10 +45,15 @@ const getFolders = async (userId) => {
 };
 
 const createFolder = async (userId, name) => {
+    if (name.trim() === 'Ended') {
+        throw new ApiError(400, 'Folder name not allowed');
+    }
+
     const { data: existing, error: cErr } = await supabaseAdmin
         .from('watchlist_folders')
         .select('id')
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('is_system', false);
     if (cErr) throw new ApiError(500, cErr.message);
     if (existing.length >= 20) throw new ApiError(400, 'Maximum 20 folders allowed');
 
@@ -51,6 +67,21 @@ const createFolder = async (userId, name) => {
 };
 
 const renameFolder = async (folderId, userId, name) => {
+    if (name.trim() === 'Ended') {
+        throw new ApiError(400, 'Folder name not allowed');
+    }
+
+    const { data: folder } = await supabaseAdmin
+        .from('watchlist_folders')
+        .select('is_system')
+        .eq('id', folderId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    if (folder && folder.is_system) {
+        throw new ApiError(400, 'Cannot rename this folder');
+    }
+
     const { data, error } = await supabaseAdmin
         .from('watchlist_folders')
         .update({ name, updated_at: new Date().toISOString() })
@@ -65,6 +96,17 @@ const renameFolder = async (folderId, userId, name) => {
 };
 
 const deleteFolder = async (folderId, userId) => {
+    const { data: folder } = await supabaseAdmin
+        .from('watchlist_folders')
+        .select('is_system')
+        .eq('id', folderId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    if (folder && folder.is_system) {
+        throw new ApiError(400, 'Cannot delete this folder');
+    }
+
     await supabaseAdmin
         .from('watchlist')
         .update({ folder_id: null })
@@ -98,16 +140,37 @@ const getWatchlistByFolder = async (userId, folderId) => {
 };
 
 const getAll = async (userId) => {
-    const { data, error } = await supabaseAdmin
+    // Exclude items in the system "Ended" folder from "All Saved"
+    const { data: endedFolder } = await supabaseAdmin
+        .from('watchlist_folders')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('name', 'Ended')
+        .eq('is_system', true)
+        .maybeSingle();
+
+    let query = supabaseAdmin
         .from('watchlist')
         .select(WATCHLIST_SELECT)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .eq('user_id', userId);
+
+    if (endedFolder) {
+        query = query.neq('folder_id', endedFolder.id);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw new ApiError(500, error.message);
     return data;
 };
 
 const addToWatchlist = async (userId, gemId, auctionId, folderId) => {
+    if (folderId) {
+        const folder = await getFolderById(folderId, userId);
+        if (folder && folder.is_system) {
+            throw new ApiError(400, 'Cannot add items directly to this folder');
+        }
+    }
+
     if (gemId) {
         const { data: exists } = await supabaseAdmin
             .from('watchlist')
@@ -157,6 +220,13 @@ const removeOlderThan = async (userId, days) => {
 };
 
 const moveToFolder = async (userId, watchlistId, folderId) => {
+    if (folderId) {
+        const folder = await getFolderById(folderId, userId);
+        if (folder && folder.is_system) {
+            throw new ApiError(400, 'Cannot manually move items to this folder');
+        }
+    }
+
     const { data, error } = await supabaseAdmin
         .from('watchlist')
         .update({ folder_id: folderId })
@@ -202,10 +272,25 @@ const countByFolder = async (userId, folderId) => {
 };
 
 const countAll = async (userId) => {
-    const { count, error } = await supabaseAdmin
+    // Exclude items in the system "Ended" folder from the "All Saved" count
+    const { data: endedFolder } = await supabaseAdmin
+        .from('watchlist_folders')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('name', 'Ended')
+        .eq('is_system', true)
+        .maybeSingle();
+
+    let query = supabaseAdmin
         .from('watchlist')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId);
+
+    if (endedFolder) {
+        query = query.neq('folder_id', endedFolder.id);
+    }
+
+    const { count, error } = await query;
     if (error) throw new ApiError(500, error.message);
     return count || 0;
 };
@@ -224,4 +309,5 @@ module.exports = {
     isInWatchlist,
     countByFolder,
     countAll,
+    getFolderById,
 };

@@ -32,9 +32,10 @@ const MoveFolderModal = ({ isOpen, onClose, item, folders, onMove }) => {
 
     const gem = item.gem || {};
     const currentFolderId = item.folder_id || 'uncategorized';
+    // Exclude virtual and system folders (like "Ended") from manual moves
     const pickableFolders = [
         { id: 'uncategorized', name: 'Uncategorized', gem_count: '' },
-        ...(folders || []).filter((f) => f.id !== 'all' && f.id !== 'uncategorized'),
+        ...(folders || []).filter((f) => f.id !== 'all' && f.id !== 'uncategorized' && !f.is_system),
     ];
 
     const handlePick = (folderId) => {
