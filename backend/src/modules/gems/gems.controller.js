@@ -21,9 +21,22 @@ const searchGems = catchAsync(async (req, res) => {
 const aiValuate = catchAsync(async (req, res) => {
     const d = req.validated;
 
+    // Map validated snake_case fields to ML service camelCase contract
+    const mlPayload = {
+        gemFamily:   (d.gem_type || '').toLowerCase(),
+        caratWeight: d.carat_weight,
+        shape:       d.cut || 'Other',
+        color:       d.color,
+        clarity:     d.clarity,
+        treatment:   d.treatment,
+        x:           d.x ?? 7.0,
+        y:           d.y ?? 5.0,
+        z:           d.z ?? 3.5,
+    };
+
     // Attempt ML service call
     const mlUrl = process.env.ML_SERVICE_URL || 'http://localhost:8000';
-    let predicted_price, shap_values, confidence, is_mock;
+    let predictedPrice, shapValues, confidenceLow, confidenceHigh, explanation, modelUsed;
 
     try {
         const controller = new AbortController();
@@ -31,16 +44,18 @@ const aiValuate = catchAsync(async (req, res) => {
         const mlRes = await fetch(`${mlUrl}/predict`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(d),
+            body: JSON.stringify(mlPayload),
             signal: controller.signal,
         });
         clearTimeout(timeout);
         if (!mlRes.ok) throw new Error('ML service error');
         const mlData = await mlRes.json();
-        predicted_price = mlData.predicted_price;
-        shap_values = mlData.shap_values;
-        confidence = mlData.confidence;
-        is_mock = false;
+        predictedPrice = mlData.predictedPrice;
+        shapValues = mlData.shapValues;
+        confidenceLow = mlData.confidenceLow;
+        confidenceHigh = mlData.confidenceHigh;
+        explanation = mlData.explanation;
+        modelUsed = mlData.modelUsed;
     } catch {
         // ML service unavailable — return clear error instead of fake data
         return res.status(503).json({
@@ -50,7 +65,18 @@ const aiValuate = catchAsync(async (req, res) => {
         });
     }
 
-    res.json({ success: true, data: { predicted_price, shap_values, confidence, is_mock } });
+    res.json({
+        success: true,
+        data: {
+            predictedPrice,
+            shapValues,
+            confidenceLow,
+            confidenceHigh,
+            explanation,
+            modelUsed,
+            currency: 'LKR',
+        },
+    });
 });
 
 // ─── GET /api/gems/categories ────────────────────────────────────────────────

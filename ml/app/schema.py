@@ -25,6 +25,9 @@ class PredictRequest(BaseModel):
     clarity:     str = Field(..., description="Clarity grade — must match dataset clarity labels")
     treatment:   str = Field(..., description="Treatment — must match dataset treatment labels")
     caratWeight: float = Field(..., gt=0, le=999.99, description="Carat weight (numeric)")
+    x: float = Field(..., gt=0, le=200, description="Length in mm")
+    y: float = Field(..., gt=0, le=200, description="Width in mm")
+    z: float = Field(..., gt=0, le=200, description="Depth in mm")
 
     model_config = {"json_schema_extra": {"example": {
         "gemFamily":   "ruby",
@@ -33,6 +36,9 @@ class PredictRequest(BaseModel):
         "clarity":     "VVS (Eye Clean 1)",
         "treatment":   "Untreated",
         "caratWeight": 1.5,
+        "x": 7.5,
+        "y": 6.2,
+        "z": 4.1,
     }}}
 
 
@@ -41,6 +47,7 @@ class SHAPEntry(BaseModel):
     value:        str
     contribution: float
     direction:    Literal["positive", "negative", "neutral"]
+    impactLkr:    float = Field(default=0.0, description="Approximate LKR impact of this feature")
 
 
 class PredictResponse(BaseModel):
@@ -49,3 +56,5 @@ class PredictResponse(BaseModel):
     confidenceHigh:  float
     currency:        str = "LKR"
     shapValues:      List[SHAPEntry]
+    explanation:     str = Field(default="", description="Human-readable SHAP summary")
+    modelUsed:       str = Field(default="", description="Name of the model that generated the prediction")

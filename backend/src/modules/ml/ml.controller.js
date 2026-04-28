@@ -10,15 +10,23 @@ const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
  * returns the response to the frontend.
  */
 const predict = catchAsync(async (req, res) => {
-    const { gemFamily, shape, color, clarity, treatment, caratWeight } = req.body;
+    const { gemFamily, shape, color, clarity, treatment, caratWeight, x, y, z } = req.body;
 
-    if (!gemFamily || !shape || !color || !clarity || !treatment || !caratWeight) {
+    if (!gemFamily || !shape || !color || !clarity || !treatment || caratWeight === undefined) {
         throw new ApiError(400, 'Missing required fields: gemFamily, shape, color, clarity, treatment, caratWeight');
     }
 
     const caratNum = parseFloat(caratWeight);
     if (isNaN(caratNum) || caratNum <= 0) {
         throw new ApiError(400, 'caratWeight must be a positive number');
+    }
+
+    const xNum = parseFloat(x);
+    const yNum = parseFloat(y);
+    const zNum = parseFloat(z);
+
+    if (isNaN(xNum) || xNum <= 0 || isNaN(yNum) || yNum <= 0 || isNaN(zNum) || zNum <= 0) {
+        throw new ApiError(400, 'x, y, z must be positive numbers representing gem dimensions in mm');
     }
 
     const mlResponse = await fetch(`${ML_SERVICE_URL}/predict`, {
@@ -31,6 +39,9 @@ const predict = catchAsync(async (req, res) => {
             clarity,
             treatment,
             caratWeight: caratNum,
+            x: xNum,
+            y: yNum,
+            z: zNum,
         }),
     });
 

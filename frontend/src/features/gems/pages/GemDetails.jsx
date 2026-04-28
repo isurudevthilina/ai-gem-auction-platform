@@ -13,6 +13,7 @@ import RatingSummary from '../../reviews/components/RatingSummary';
 import { deleteGem } from '../services/gemsService';
 import apiClient from '../../../api/client';
 import { useCurrency } from '../../../context/CurrencyContext';
+import { formatLKR } from '../../../shared/utils/currency';
 
 const T = {
     bg: '#F0EDE8',
@@ -99,6 +100,8 @@ const GemDetails = () => {
         { label: 'Clarity', value: gem.clarity },
         { label: 'Cut / Shape', value: gem.cut },
         { label: 'Treatment', value: gem.treatment },
+        { label: 'Dimensions', value: (gem.x && gem.y && gem.z) ? `${gem.x} × ${gem.y} × ${gem.z} mm` : null },
+        { label: 'Depth Ratio', value: (gem.z && gem.x && gem.y) ? (gem.z / ((parseFloat(gem.x) + parseFloat(gem.y)) / 2)).toFixed(2) : null },
         { label: 'Certification', value: certDisplay },
     ].filter(s => s.value);
 
@@ -215,7 +218,7 @@ const GemDetails = () => {
                                     <Sparkles size={15} color={T.gold} />
                                     <div>
                                         <div style={{ fontFamily: BODY, fontSize: '0.68rem', color: T.faint, fontWeight: 600, marginBottom: 2 }}>AI Estimated Value</div>
-                                        <div style={{ fontFamily: BODY, fontSize: '1.05rem', color: T.gold, fontWeight: 800 }}>{formatPrice(gem.predicted_price)}</div>
+                                        <div style={{ fontFamily: BODY, fontSize: '1.05rem', color: T.gold, fontWeight: 800 }}>{formatLKR(gem.predicted_price)}</div>
                                     </div>
                                 </div>
                             )}

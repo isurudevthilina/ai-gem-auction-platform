@@ -4,6 +4,7 @@ const { supabaseAdmin } = require('../../config/supabase');
 const GEM_SELECT = `
     id, title, description, carat_weight, cut, clarity, color,
     treatment, certification_body, certification, images,
+    x, y, z,
     listing_type, status, buy_now_price, predicted_price,
     created_at, updated_at,
     seller:profiles!gems_seller_id_fkey ( id, full_name, avatar_url ),
@@ -13,6 +14,7 @@ const GEM_SELECT = `
 const GEM_SELECT_MINIMAL = `
     id, title, carat_weight, color, clarity, cut, status,
     buy_now_price, images, listing_type, certification_body, certification,
+    x, y, z,
     created_at, updated_at,
     category:categories ( id, name, slug )
 `;

@@ -28,6 +28,9 @@ const step1Schema = z.object({
     clarity:      z.string().optional(),
     cut:          z.string().optional(),
     treatment:    z.string().optional(),
+    x:            z.string().refine(v => { const n = parseFloat(v); return !isNaN(n) && n >= 0.1 && n <= 200; }, 'Enter a valid length (0.1–200 mm).').optional().or(z.literal('')),
+    y:            z.string().refine(v => { const n = parseFloat(v); return !isNaN(n) && n >= 0.1 && n <= 200; }, 'Enter a valid width (0.1–200 mm).').optional().or(z.literal('')),
+    z:            z.string().refine(v => { const n = parseFloat(v); return !isNaN(n) && n >= 0.1 && n <= 200; }, 'Enter a valid depth (0.1–200 mm).').optional().or(z.literal('')),
 });
 const step2Base = z.object({
     description:   z.string().min(50, 'Description must be at least 50 characters.').max(5000).optional().or(z.literal('')),
@@ -112,7 +115,7 @@ const GemForm = ({ categories = [], onSubmit, isSubmitting = false, initialValue
 
     const defaults = {
         gem_type: '', title: '', carat_weight: '', color: '', clarity: '',
-        cut: '', treatment: '', description: '',
+        cut: '', treatment: '', x: '', y: '', z: '', description: '',
         certification_body: '', certification: '', listing_type: 'direct_sell',
         buy_now_price: '', ...savedDraft,
     };
@@ -124,11 +127,31 @@ const GemForm = ({ categories = [], onSubmit, isSubmitting = false, initialValue
         });
     }
 
-    const { register, handleSubmit, control, watch, setValue, trigger, formState: { errors }, getValues } = useForm({
+    const { register, handleSubmit, control, watch, setValue, trigger, reset, formState: { errors }, getValues } = useForm({
         resolver: zodResolver(fullSchema),
         defaultValues: defaults,
         mode: 'onTouched',
     });
+
+    // Reset form when initialValues arrive (AI predictor prefill)
+    useEffect(() => {
+        if (initialValues && Object.keys(initialValues).length > 0) {
+            const resetData = {};
+            Object.entries(initialValues).forEach(([k, v]) => {
+                if (v !== null && v !== undefined) resetData[k] = String(v);
+            });
+            // Auto-suggest title if missing
+            if (!resetData.title && resetData.carat_weight && resetData.gem_type) {
+                const parts = [
+                    `${resetData.carat_weight}ct`,
+                    resetData.color,
+                    resetData.gem_type
+                ].filter(Boolean);
+                resetData.title = parts.join(' ');
+            }
+            reset(resetData);
+        }
+    }, [initialValues, reset]);
 
     const listingType = watch('listing_type');
 
@@ -157,7 +180,7 @@ const GemForm = ({ categories = [], onSubmit, isSubmitting = false, initialValue
     // Step navigation with validation
     const goNext = async () => {
         let fields;
-        if (step === 1) fields = ['gem_type', 'title', 'carat_weight', 'color', 'clarity', 'cut', 'treatment'];
+        if (step === 1) fields = ['gem_type', 'title', 'carat_weight', 'color', 'clarity', 'cut', 'treatment', 'x', 'y', 'z'];
         else if (step === 2) fields = ['description', 'certification', 'listing_type', 'buy_now_price'];
         const valid = await trigger(fields);
         if (valid) setStep(s => Math.min(s + 1, aiQuickList ? 3 : 3));

@@ -304,6 +304,9 @@ CREATE TABLE public.gems (
                            CHECK (status IN ('draft', 'listed', 'in_auction', 'sold', 'unlisted')),
     buy_now_price      NUMERIC(12,2) CHECK (buy_now_price > 0),
     predicted_price    NUMERIC(12,2),
+    x                  NUMERIC(8,3) CHECK (x > 0),
+    y                  NUMERIC(8,3) CHECK (y > 0),
+    z                  NUMERIC(8,3) CHECK (z > 0),
     created_at         TIMESTAMPTZ DEFAULT NOW(),
     updated_at         TIMESTAMPTZ DEFAULT NOW()
 );

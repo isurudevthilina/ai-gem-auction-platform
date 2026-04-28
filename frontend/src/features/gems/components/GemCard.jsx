@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SellerRatingBadge from '../../reviews/components/SellerRatingBadge';
 import { useCurrency } from '../../../context/CurrencyContext';
+import { formatLKR } from '../../../shared/utils/currency';
 import AddToWatchlistButton from '../../watchlist/components/AddToWatchlistButton';
 
 const C = {
@@ -248,7 +249,7 @@ const GemCard = ({ gem, onClick }) => {
                     margin: 0, fontFamily: DISPLAY, fontSize: 12, color: C.muted,
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>
-                    {[gem.carat_weight && `${gem.carat_weight}ct`, gem.cut, gem.certification_body].filter(Boolean).join(' · ')}
+                    {[gem.carat_weight && `${gem.carat_weight}ct`, gem.cut, gem.certification_body, gem.x && `${gem.x}×${gem.y}×${gem.z}mm`].filter(Boolean).join(' · ')}
                 </p>
 
                 {/* ROW 4: Price */}
@@ -281,7 +282,7 @@ const GemCard = ({ gem, onClick }) => {
                 {gem.predicted_price && gem.buy_now_price && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
                         <StarMini />
-                        <span style={{ fontFamily: DISPLAY, fontSize: 10, color: C.muted }}>AI Est: {formatPrice(gem.predicted_price)}</span>
+                        <span style={{ fontFamily: DISPLAY, fontSize: 10, color: C.muted }}>AI Est: {formatLKR(gem.predicted_price)}</span>
                     </div>
                 )}
 
@@ -367,6 +368,7 @@ export const GemCardRow = ({ gem, onClick }) => {
                     {gem.cut && <span>Cut: {gem.cut}</span>}
                     {gem.clarity && <span>Clarity: {gem.clarity}</span>}
                     {gem.treatment && <span>Treatment: {gem.treatment}</span>}
+                    {gem.x && gem.y && gem.z && <span>Size: {gem.x}×{gem.y}×{gem.z}mm</span>}
                     {gem.certification_body && <span>Cert: {gem.certification_body}{gem.certification ? ' · ' + gem.certification : ''}</span>}
                     {certVerified && !gem.certification_body && <span>Cert: {certBody || 'Verified'}</span>}
                 </div>

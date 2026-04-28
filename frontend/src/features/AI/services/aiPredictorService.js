@@ -17,10 +17,13 @@ import api from '../../../api/client';
  * @returns {Promise<{ predictedPrice, confidenceLow, confidenceHigh, currency, shapValues }>}
  */
 export const predictGemPrice = async (formData) => {
-    const { gemFamily, shape, caratWeight, clarity, color, treatment } = formData;
+    const { gemFamily, shape, caratWeight, clarity, color, treatment, x, y, z } = formData;
 
     const { data } = await api.post('/ml/predict', {
-        gemFamily, shape, caratWeight, clarity, color, treatment
+        gemFamily, shape, caratWeight, clarity, color, treatment,
+        x: parseFloat(x),
+        y: parseFloat(y),
+        z: parseFloat(z),
     });
 
     // Node proxy wraps in ApiResponse: { status, message, data }

@@ -66,6 +66,10 @@ const createGemSchema = z.object({
         errorMap: () => ({ message: `Treatment must be one of: ${TREATMENTS.join(', ')}` }),
     }).optional(),
 
+    x: z.number().min(0.1).max(200).optional(),
+    y: z.number().min(0.1).max(200).optional(),
+    z: z.number().min(0.1).max(200).optional(),
+
     description: z
         .string()
         .trim()
@@ -126,6 +130,9 @@ const updateGemSchema = z.object({
     clarity:      z.enum(CLARITY_GRADES).optional(),
     cut:          z.enum(CUT_SHAPES).optional(),
     treatment:    z.enum(TREATMENTS).optional(),
+    x:            z.number().min(0.1).max(200).optional(),
+    y:            z.number().min(0.1).max(200).optional(),
+    z:            z.number().min(0.1).max(200).optional(),
     description:  z.string().trim().max(5000).optional(),
     certification_body: z.enum(CERTIFICATION_BODIES).optional(),
     certification:z.string().trim().max(100).optional(),
@@ -145,6 +152,9 @@ const aiValuationSchema = z.object({
     clarity:      z.string().min(1, 'Clarity is required.'),
     cut:          z.string().min(1, 'Cut is required.'),
     treatment:    z.string().min(1, 'Treatment is required.'),
+    x:            z.number().min(0.1).max(200).optional(),
+    y:            z.number().min(0.1).max(200).optional(),
+    z:            z.number().min(0.1).max(200).optional(),
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -11,12 +11,15 @@
  *   1 → Gem Family (8 cards)
  *   2 → Shape (10 SVG cards)
  *   3 → Carat Weight (input + slider)
- *   4 → Quality (clarity SVG + colors per gem type + treatment)
- *   5 → Result / SHAP
+ *   4 → Dimensions (x, y, z inputs)
+ *   5 → Quality (clarity SVG + colors per gem type + treatment)
+ *   6 → Result / SHAP
  */
 import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { useCurrency } from '../../../context/CurrencyContext';
+import { lkrToUsd } from '../../../shared/utils/currency';
 import {
   ChevronLeft, ChevronRight, RotateCcw, Sparkles,
   TrendingUp, Info, ArrowRight, Share2, Gem, Scale,
@@ -303,7 +306,8 @@ const LandingScreen = ({ onStart }) => (
         { step: '1', label: 'Gem Type', icon: '💎' },
         { step: '2', label: 'Shape', icon: '✂️' },
         { step: '3', label: 'Carat', icon: '⚖️' },
-        { step: '4', label: 'Quality', icon: '🔬' },
+        { step: '4', label: 'Size', icon: '📐' },
+        { step: '5', label: 'Quality', icon: '🔬' },
       ].map(({ step, label, icon }) => (
         <div key={step} style={{
           padding: '16px 8px', borderRadius: 8,
@@ -335,7 +339,7 @@ const LandingScreen = ({ onStart }) => (
     </button>
 
     <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 28 }}>
-      {[['XGBoost ML', '🤖'], ['SHAP Explainable', '🧠'], ['R² = 96%', '📊']].map(([label, icon]) => (
+      {[['ML Powered', '🤖'], ['SHAP Explainable', '🧠'], ['R² = 96%', '📊']].map(([label, icon]) => (
         <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', color: C.faint, fontFamily: BODY, fontWeight: 500 }}>
           <span>{icon}</span> {label}
         </div>
@@ -527,8 +531,74 @@ const Step3Carat = ({ formData, updateField }) => {
   );
 };
 
-/* ── Step 4: Quality ─────────────────────────────────────────── */
-const Step4Quality = ({ formData, updateField }) => {
+/* ── Step 4: Dimensions ──────────────────────────────────────── */
+const Step4Dimensions = ({ formData, updateField }) => {
+  const x = parseFloat(formData.x) || 0;
+  const y = parseFloat(formData.y) || 0;
+  const z = parseFloat(formData.z) || 0;
+  const meanWidth = (x + y) / 2;
+  const depthRatio = meanWidth > 0 ? z / meanWidth : 0;
+
+  return (
+    <div>
+      <StepHeader icon={Scale} label="Gem Dimensions" sub="Physical size drives value alongside carat weight." />
+
+      <div style={{ ...cardBase, padding: '28px 28px', marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
+          {[
+            { key: 'x', label: 'Length (X)', icon: '📏' },
+            { key: 'y', label: 'Width (Y)', icon: '↔️' },
+            { key: 'z', label: 'Depth (Z)', icon: '↕️' },
+          ].map(({ key, label, icon }) => (
+            <div key={key}>
+              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: C.faint, fontFamily: BRAND, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                {icon} {label}
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="number"
+                  min="0.1"
+                  max="100"
+                  step="0.1"
+                  value={formData[key]}
+                  onChange={e => updateField(key, e.target.value)}
+                  placeholder="0.0"
+                  style={{
+                    width: '100%', padding: '10px 14px', borderRadius: 6,
+                    background: C.cream, border: `1.5px solid ${formData[key] ? C.navy : C.border}`,
+                    color: C.navy, fontSize: '1.1rem', fontWeight: 700, fontFamily: BODY,
+                    outline: 'none', fontVariantNumeric: 'tabular-nums',
+                  }}
+                />
+                <span style={{ color: C.muted, fontWeight: 600, fontSize: '0.85rem', fontFamily: BODY }}>mm</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {x > 0 && y > 0 && z > 0 && (
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', paddingTop: 16, borderTop: `0.5px dashed ${C.border}` }}>
+            <div style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(26,77,140,0.06)', border: `0.5px solid ${C.border}` }}>
+              <span style={{ fontSize: '0.65rem', color: C.faint, fontFamily: BRAND, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Mean Width</span>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: C.navy, fontFamily: BODY }}>{meanWidth.toFixed(2)} mm</div>
+            </div>
+            <div style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(196,137,42,0.06)', border: `0.5px solid ${C.border}` }}>
+              <span style={{ fontSize: '0.65rem', color: C.faint, fontFamily: BRAND, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Depth Ratio</span>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: C.gold, fontFamily: BODY }}>{depthRatio.toFixed(2)}</div>
+            </div>
+            <div style={{ padding: '6px 12px', borderRadius: 8, background: 'rgba(22,163,74,0.06)', border: `0.5px solid ${C.border}` }}>
+              <span style={{ fontSize: '0.65rem', color: C.faint, fontFamily: BRAND, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Volume Hint</span>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: C.green, fontFamily: BODY }}>≈ {(x * y * z / 1000).toFixed(2)} mm³</div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ── Step 5: Quality ─────────────────────────────────────────── */
+const Step5Quality = ({ formData, updateField }) => {
   const gem = GEM_FAMILIES.find(g => g.value === formData.gemFamily);
   const availableColors = gem?.colors || [];
 
@@ -694,7 +764,8 @@ const ResultScreen = ({ result, formData, onReset, onListAsDirectSale, onListAsA
             { label: 'Gem', value: `${gem?.emoji || ''} ${gem?.name || formData.gemFamily}` },
             { label: 'Carat', value: `${formData.caratWeight} ct` },
             { label: 'Shape', value: formData.shape || '—' },
-            { label: 'Model', value: 'R² = 96%' },
+            { label: 'Size', value: formData.x ? `${formData.x}×${formData.y}×${formData.z}mm` : '—' },
+            { label: 'Model', value: result?.modelUsed || 'ML' },
           ].map(({ label, value }) => (
             <div key={label} style={{ textAlign: 'center', minWidth: 70 }}>
               <div style={{ fontSize: '0.6rem', color: C.faint, fontWeight: 700, fontFamily: BRAND, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
@@ -716,6 +787,11 @@ const ResultScreen = ({ result, formData, onReset, onListAsDirectSale, onListAsA
           <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: C.muted, lineHeight: 1.5, fontFamily: BODY }}>
             Each factor's contribution to the predicted price, ranked by impact.
           </p>
+          {result?.explanation && (
+            <p style={{ margin: '10px 0 0', fontSize: '0.82rem', color: C.text, lineHeight: 1.5, fontFamily: BODY, fontStyle: 'italic', padding: '10px 14px', borderRadius: 6, background: 'rgba(26,77,140,0.04)', border: `0.5px solid ${C.border}` }}>
+              {result.explanation}
+            </p>
+          )}
         </div>
         <SHAPWaterfallChart shapValues={result?.shapValues || []} maxBarWidth={260} />
       </div>
@@ -728,9 +804,9 @@ const ResultScreen = ({ result, formData, onReset, onListAsDirectSale, onListAsA
       }}>
         <Info size={13} style={{ color: C.faint, flexShrink: 0, marginTop: 1 }} />
         <p style={{ margin: 0, fontSize: '0.72rem', color: C.faint, lineHeight: 1.6, fontFamily: BODY }}>
-          <strong style={{ color: C.muted }}>Model note:</strong> XGBoost trained on 21,998 real gem transactions.
+          <strong style={{ color: C.muted }}>Model note:</strong> {result?.modelUsed || 'ML'} trained on 21,998 real gem transactions.
           The expected range is ±1 standard deviation (~68% of predictions fall within this band).
-          Typical error = ±16% MAPE. For reference only — not a substitute for professional appraisal.
+          Typical error = ±{Math.round((Math.exp(0.227) - 1) * 100)}% MAPE. For reference only — not a substitute for professional appraisal.
         </p>
       </div>
 
@@ -819,7 +895,7 @@ const AIPredictorPage = () => {
 
   const initialParams = useMemo(() => {
     const p = {};
-    const keys = ['gemFamily', 'shape', 'caratWeight', 'clarity', 'color', 'treatment'];
+    const keys = ['gemFamily', 'shape', 'caratWeight', 'x', 'y', 'z', 'clarity', 'color', 'treatment'];
     keys.forEach(k => { const v = searchParams.get(k); if (v) p[k] = v; });
     return p;
   }, []);
@@ -845,6 +921,8 @@ const AIPredictorPage = () => {
     });
   };
 
+  const { rates } = useCurrency();
+
   const buildAIPrefill = (listingType) => ({
     gem_type: formData.gemFamily
       ? formData.gemFamily.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
@@ -854,9 +932,13 @@ const AIPredictorPage = () => {
     clarity: formData.clarity || '',
     color: formData.color || '',
     treatment: formData.treatment || '',
+    x: formData.x ? String(formData.x) : '',
+    y: formData.y ? String(formData.y) : '',
+    z: formData.z ? String(formData.z) : '',
     listing_type: listingType,
+    // predictedPrice is in LKR; buy_now_price is stored as USD in DB
     buy_now_price: listingType === 'direct_sell' && result?.predictedPrice
-      ? String(Math.round(result.predictedPrice))
+      ? String(Math.round(lkrToUsd(result.predictedPrice, rates)))
       : '',
     predicted_price: result?.predictedPrice ? String(Math.round(result.predictedPrice)) : '',
   });
@@ -891,7 +973,7 @@ const AIPredictorPage = () => {
         </button>
 
         {/* Progress */}
-        {step >= 1 && step <= 4 && (
+        {step >= 1 && step <= 5 && (
           <StepDots step={step} total={TOTAL_STEPS} />
         )}
 
@@ -905,8 +987,9 @@ const AIPredictorPage = () => {
           {step === 1 && <Step1GemFamily formData={formData} updateField={updateField} />}
           {step === 2 && <Step2Shape formData={formData} updateField={updateField} />}
           {step === 3 && <Step3Carat formData={formData} updateField={updateField} />}
-          {step === 4 && <Step4Quality formData={formData} updateField={updateField} />}
-          {step === 5 && (
+          {step === 4 && <Step4Dimensions formData={formData} updateField={updateField} />}
+          {step === 5 && <Step5Quality formData={formData} updateField={updateField} />}
+          {step === 6 && (
             <ResultScreen
               result={result}
               formData={formData}
@@ -929,14 +1012,14 @@ const AIPredictorPage = () => {
             </div>
           )}
 
-          {step >= 1 && step <= 4 && (
+          {step >= 1 && step <= 5 && (
             <NavRow
               onBack={handleBack}
               onNext={handleNext}
               onPredict={handlePredict}
               isLoading={isLoading}
               isValid={isStepValid()}
-              showPredict={step === 4}
+              showPredict={step === 5}
               showBack={step > 1}
             />
           )}
@@ -961,7 +1044,7 @@ const AIPredictorPage = () => {
                 Predicting price…
               </div>
               <div style={{ fontSize: '0.78rem', color: C.muted, fontFamily: BODY }}>
-                Running XGBoost model + SHAP analysis
+                Running {result?.modelUsed || 'ML'} model + SHAP analysis
               </div>
             </div>
           </div>

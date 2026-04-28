@@ -8,6 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useCreateGem } from '../hooks/useCreateGem';
 import { getGemCategories } from '../services/gemsService';
+import { formatLKR } from '../../../shared/utils/currency';
 import GemForm from '../components/GemForm';
 import { CheckCircle, AlertCircle, X, FileText, Shield, Sparkles } from 'lucide-react';
 import { T, SERIF, DISPLAY, BODY } from '../components/formTokens';
@@ -44,6 +45,7 @@ const CreateGemPage = () => {
     const [hasDraft, setHasDraft] = useState(false);
     const [certPrompt, setCertPrompt] = useState(false);
     const [aiPrefillBanner, setAiPrefillBanner] = useState(null);
+    const [aiPrefillData, setAiPrefillData] = useState(null);
 
     // Handle AI predictor prefill
     useEffect(() => {
@@ -52,6 +54,7 @@ const CreateGemPage = () => {
             const draft = { ...prefill };
             localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
             setHasDraft(true);
+            setAiPrefillData(prefill);
             setAiPrefillBanner({
                 gemType: prefill.gem_type,
                 predictedPrice: prefill.predicted_price,
@@ -132,7 +135,7 @@ const CreateGemPage = () => {
                                 Auto-filled from AI Price Prediction
                                 {aiPrefillBanner.predictedPrice && (
                                     <span style={{ marginLeft: 6, fontWeight: 700 }}>
-                                        · Est. {Number(aiPrefillBanner.predictedPrice).toLocaleString()} LKR
+                                        · Est. {formatLKR(aiPrefillBanner.predictedPrice)}
                                     </span>
                                 )}
                             </span>
@@ -182,6 +185,7 @@ const CreateGemPage = () => {
                     onSubmit={handleSubmit}
                     isSubmitting={mutation.isPending}
                     aiQuickList={!!aiPrefillBanner}
+                    initialValues={aiPrefillData}
                 />
             </div>
 

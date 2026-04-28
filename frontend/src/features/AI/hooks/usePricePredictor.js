@@ -13,12 +13,15 @@
 import { useState, useCallback } from 'react';
 import { predictGemPrice } from '../services/aiPredictorService';
 
-const TOTAL_STEPS = 4; // steps 1-4 (step 0 is the landing)
+const TOTAL_STEPS = 5; // steps 1-5 (step 0 is the landing)
 
 const INITIAL_FORM = {
     gemFamily:   '',
     shape:       '',
     caratWeight: '',
+    x:           '',
+    y:           '',
+    z:           '',
     clarity:     '',
     color:       '',
     treatment:   '',
@@ -56,7 +59,7 @@ export const usePricePredictor = (initialParams = {}) => {
         try {
             const prediction = await predictGemPrice(formData);
             setResult(prediction);
-            setStep(5);
+            setStep(6);
         } catch (err) {
             console.error('Prediction error:', err);
             setError(err?.message || 'Prediction failed. Please try again.');
@@ -79,7 +82,13 @@ export const usePricePredictor = (initialParams = {}) => {
             case 1: return !!formData.gemFamily;
             case 2: return !!formData.shape;
             case 3: return !!formData.caratWeight && parseFloat(formData.caratWeight) > 0;
-            case 4: return !!formData.clarity && !!formData.color && !!formData.treatment;
+            case 4: {
+                const x = parseFloat(formData.x);
+                const y = parseFloat(formData.y);
+                const z = parseFloat(formData.z);
+                return !isNaN(x) && x > 0 && !isNaN(y) && y > 0 && !isNaN(z) && z > 0;
+            }
+            case 5: return !!formData.clarity && !!formData.color && !!formData.treatment;
             default: return true;
         }
     }, [step, formData]);

@@ -1,0 +1,61 @@
+{
+  "best_model": "LightGBM",
+  "ranking": [
+    "LightGBM",
+    "XGBoost",
+    "RandomForest"
+  ],
+  "metrics": {
+    "XGBoost": {
+      "Log_RMSE": 0.2297,
+      "Log_MAE": 0.1483,
+      "Log_R2": 0.9583,
+      "Log_MAPE_pct": 1.53,
+      "LKR_RMSE": 77654.98,
+      "LKR_MAE": 9633.13,
+      "LKR_R2": 0.795,
+      "LKR_MAPE_pct": 15.49,
+      "LKR_Median_AE": 1100.14,
+      "Tier_Accuracy": 0.8989
+    },
+    "RandomForest": {
+      "Log_RMSE": 0.2653,
+      "Log_MAE": 0.1726,
+      "Log_R2": 0.9444,
+      "Log_MAPE_pct": 1.77,
+      "LKR_RMSE": 89835.88,
+      "LKR_MAE": 11396.99,
+      "LKR_R2": 0.7256,
+      "LKR_MAPE_pct": 17.81,
+      "LKR_Median_AE": 1249.08,
+      "Tier_Accuracy": 0.8861
+    },
+    "LightGBM": {
+      "Log_RMSE": 0.2272,
+      "Log_MAE": 0.1462,
+      "Log_R2": 0.9592,
+      "Log_MAPE_pct": 1.51,
+      "LKR_RMSE": 70747.67,
+      "LKR_MAE": 9218.29,
+      "LKR_R2": 0.8298,
+      "LKR_MAPE_pct": 15.2,
+      "LKR_Median_AE": 1055.72,
+      "Tier_Accuracy": 0.8989
+    }
+  },
+  "features": [
+    "type",
+    "shape",
+    "color",
+    "clarity",
+    "treatment",
+    "carat_weight",
+    "x",
+    "y",
+    "z",
+    "mean_width",
+    "depth_ratio"
+  ],
+  "dataset_size": 21998,
+  "test_size": 4400
+}

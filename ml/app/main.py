@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Gem Price Prediction API",
     version="1.0.0",
-    description="XGBoost-based gem price predictor with SHAP explanations.",
+    description="Gem price predictor (XGBoost / RandomForest / LightGBM) with SHAP explanations.",
     lifespan=lifespan,
 )
 
@@ -61,6 +61,7 @@ def health():
         "status": "ok",
         "model_loaded": model_ready,
         "message": "Model ready" if model_ready else "Model not trained yet — run python train.py",
+        "model_name": gem_model._model_name if model_ready else None,
     }
 
 

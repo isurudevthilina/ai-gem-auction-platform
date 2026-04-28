@@ -52,14 +52,22 @@ sns.set_palette("husl")
 EVAL_DIR = os.path.dirname(__file__)
 MODEL_DIR = os.path.join(EVAL_DIR, '..', 'models')
 DATA_PATH = os.path.join(EVAL_DIR, '..', 'data', 'final_gem_data_for_train.csv')
-
-CARAT_OFFSET = 0.656
+SCALER_PATH = os.path.join(MODEL_DIR, 'robust_scaler.joblib')
 
 # ─── Load Data ──────────────────────────────────────────────────────────────
 def load_data():
     df = pd.read_csv(DATA_PATH)
-    df['carat_weight'] = df['Weight'] + CARAT_OFFSET
+    scaler = joblib.load(SCALER_PATH)
+    scaled_vals = df[['Weight', 'X', 'Y', 'Z']].values
+    original_vals = scaler.inverse_transform(scaled_vals)
+
+    df['carat_weight'] = original_vals[:, 0]
+    df['x'] = original_vals[:, 1]
+    df['y'] = original_vals[:, 2]
+    df['z'] = original_vals[:, 3]
     df['log_price'] = df['Log_Price']
+    df['mean_width'] = (df['x'] + df['y']) / 2.0
+    df['depth_ratio'] = df['z'] / df['mean_width']
 
     cat_cols = ['Type', 'Shape', 'Color', 'Clarity', 'Treatment']
     for c in cat_cols:
@@ -72,7 +80,11 @@ def load_data():
 
     df = df[FEATURE_ORDER + ['log_price', 'Price']].copy()
     df.dropna(inplace=True)
-    df = df[(df['carat_weight'] > 0) & (df['log_price'] > 0)]
+    df = df[
+        (df['carat_weight'] > 0) & (df['x'] > 0) &
+        (df['y'] > 0) & (df['z'] > 0) & (df['log_price'] > 0) &
+        np.isfinite(df['depth_ratio'])
+    ]
     return df
 
 
@@ -107,7 +119,7 @@ def main():
 
     # Load trained model
     print("🧠 Loading trained model...")
-    model_path = os.path.join(MODEL_DIR, 'gem_price_model.pkl')
+    model_path = os.path.join(MODEL_DIR, 'best_model.pkl')
     model = joblib.load(model_path)
 
     # Predictions (log-space)
@@ -210,7 +222,7 @@ def main():
         'Classification_Metrics_PriceTiers': classification_metrics,
         'Feature_Importance': feat_imp_sorted,
         'Model_Info': {
-            'Model_Type': 'XGBoostRegressor',
+            'Model_Type': 'BestModel',
             'Target': 'Log_Price (natural log of LKR)',
             'Output_Currency': 'LKR',
             'Evaluation_Date': pd.Timestamp.now().isoformat(),
@@ -305,10 +317,10 @@ def main():
         import shap
         print("\n🧠 Generating SHAP summary (this may take a moment)...")
         explainer = shap.TreeExplainer(model)
-        shap_values = explainer.shap_values(X_test)
+        shap_values = explainer.shap_values(X_test.values)
 
         fig, ax = plt.subplots(figsize=(10, 6))
-        shap.summary_plot(shap_values, X_test, feature_names=FEATURE_ORDER,
+        shap.summary_plot(shap_values, X_test.values, feature_names=FEATURE_ORDER,
                           show=False, plot_size=(10, 6))
         plt.title('SHAP Feature Impact Summary', fontsize=13, fontweight='bold')
         plt.tight_layout()

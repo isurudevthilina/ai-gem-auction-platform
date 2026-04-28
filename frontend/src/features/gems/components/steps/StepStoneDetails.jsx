@@ -50,6 +50,15 @@ const StoneSummaryCard = ({ watch, onEdit }) => {
     const cut = watch('cut');
     const clarity = watch('clarity');
     const treatment = watch('treatment');
+    const x = watch('x');
+    const y = watch('y');
+    const z = watch('z');
+
+    const xNum = parseFloat(x);
+    const yNum = parseFloat(y);
+    const zNum = parseFloat(z);
+    const meanWidth = (xNum && yNum) ? ((xNum + yNum) / 2).toFixed(2) : null;
+    const depthRatio = (meanWidth && zNum) ? (zNum / parseFloat(meanWidth)).toFixed(2) : null;
 
     const specs = [
         gemType && { label: 'Gem', value: gemType, icon: '💎' },
@@ -58,6 +67,8 @@ const StoneSummaryCard = ({ watch, onEdit }) => {
         cut && { label: 'Cut', value: cut, icon: '💠' },
         clarity && { label: 'Clarity', value: clarity, icon: '👁️' },
         treatment && { label: 'Treatment', value: treatment, icon: '🔬' },
+        x && y && z && { label: 'Dimensions', value: `${x}×${y}×${z}mm`, icon: '📐' },
+        depthRatio && { label: 'Depth Ratio', value: depthRatio, icon: '↕️' },
     ].filter(Boolean);
 
     return (
@@ -119,6 +130,9 @@ const StoneSummaryCard = ({ watch, onEdit }) => {
 const StepStoneDetails = ({ register, control, errors, watch, setValue, autoTitle, categories = [], readOnly = false, onEdit }) => {
     const gemType = watch('gem_type');
     const selectedColor = watch('color');
+    const dimX = watch('x');
+    const dimY = watch('y');
+    const dimZ = watch('z');
 
     // Build category options from nested data
     const categoryOptions = categories.flatMap(cat => {
@@ -255,6 +269,39 @@ const StepStoneDetails = ({ register, control, errors, watch, setValue, autoTitl
                         <Select value={field.value} onChange={field.onChange} options={TREATMENT_OPTIONS} placeholder="Select treatment" />
                     )} />
                 </div>
+            </div>
+
+            {/* Dimensions */}
+            <div style={{ marginTop: 20 }}>
+                <label style={labelStyle}>Dimensions (mm)</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                    {[
+                        { key: 'x', label: 'Length (X)', placeholder: 'e.g. 7.5' },
+                        { key: 'y', label: 'Width (Y)', placeholder: 'e.g. 6.2' },
+                        { key: 'z', label: 'Depth (Z)', placeholder: 'e.g. 4.1' },
+                    ].map(({ key, label, placeholder }) => (
+                        <div key={key}>
+                            <label style={{ ...labelStyle, fontSize: '0.65rem', color: T.muted }}>{label}</label>
+                            <input {...register(key)} type="number" step="0.1" min="0.1" max="200"
+                                placeholder={placeholder}
+                                style={{ ...inputBase, borderColor: errors[key] ? T.error : T.border }}
+                                onFocus={e => { e.target.style.borderColor = T.borderFocus; Object.assign(e.target.style, focusRing); }}
+                                onBlur={e => { e.target.style.borderColor = errors[key] ? T.error : T.border; e.target.style.boxShadow = 'none'; }}
+                            />
+                            <FieldError message={errors[key]?.message} />
+                        </div>
+                    ))}
+                </div>
+                {dimX && dimY && dimZ && (
+                    <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                        <span style={{ fontSize: '0.72rem', color: T.muted, fontFamily: BODY }}>
+                            Mean Width: <strong>{((parseFloat(dimX) + parseFloat(dimY)) / 2).toFixed(2)} mm</strong>
+                        </span>
+                        <span style={{ fontSize: '0.72rem', color: T.muted, fontFamily: BODY }}>
+                            Depth Ratio: <strong>{(parseFloat(dimZ) / ((parseFloat(dimX) + parseFloat(dimY)) / 2)).toFixed(2)}</strong>
+                        </span>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -9,7 +9,12 @@
       "color",
       "clarity",
       "treatment",
-      "carat_weight"
+      "carat_weight",
+      "x",
+      "y",
+      "z",
+      "mean_width",
+      "depth_ratio"
     ],
     "Price_LKR_Min": 117.21,
     "Price_LKR_Max": 18861961.82,
@@ -20,105 +25,105 @@
     "Log_Price_Std": 1.1298
   },
   "Regression_Metrics_LogSpace": {
-    "Log_Train_MAE": 0.1578,
-    "Log_Train_RMSE": 0.2432,
-    "Log_Train_R2": 0.9537,
-    "Log_Train_Explained_Variance": 0.9537,
-    "Log_Train_Median_AE": 0.0975,
-    "Log_Train_MAPE_pct": 1.61,
-    "Log_Test_MAE": 0.1558,
-    "Log_Test_RMSE": 0.2371,
-    "Log_Test_R2": 0.9556,
-    "Log_Test_Explained_Variance": 0.9556,
-    "Log_Test_Median_AE": 0.0984,
-    "Log_Test_MAPE_pct": 1.6
+    "Log_Train_MAE": 0.1236,
+    "Log_Train_RMSE": 0.1929,
+    "Log_Train_R2": 0.9709,
+    "Log_Train_Explained_Variance": 0.9709,
+    "Log_Train_Median_AE": 0.0751,
+    "Log_Train_MAPE_pct": 1.27,
+    "Log_Test_MAE": 0.121,
+    "Log_Test_RMSE": 0.1842,
+    "Log_Test_R2": 0.9732,
+    "Log_Test_Explained_Variance": 0.9732,
+    "Log_Test_Median_AE": 0.074,
+    "Log_Test_MAPE_pct": 1.26
   },
   "Regression_Metrics_LKRSpace": {
-    "LKR_Train_MAE": 10067.437,
-    "LKR_Train_RMSE": 131434.7937,
-    "LKR_Train_R2": 0.6624,
-    "LKR_Train_Explained_Variance": 0.6629,
-    "LKR_Train_Median_AE": 1179.7904,
-    "LKR_Train_MAPE_pct": 16.36,
-    "LKR_Test_MAE": 8721.3014,
-    "LKR_Test_RMSE": 53518.5552,
-    "LKR_Test_R2": 0.9026,
-    "LKR_Test_Explained_Variance": 0.9031,
-    "LKR_Test_Median_AE": 1166.5399,
-    "LKR_Test_MAPE_pct": 16.21
+    "LKR_Train_MAE": 8209.0846,
+    "LKR_Train_RMSE": 131862.6064,
+    "LKR_Train_R2": 0.6602,
+    "LKR_Train_Explained_Variance": 0.6604,
+    "LKR_Train_Median_AE": 951.7816,
+    "LKR_Train_MAPE_pct": 12.7,
+    "LKR_Test_MAE": 6963.4752,
+    "LKR_Test_RMSE": 54510.0373,
+    "LKR_Test_R2": 0.899,
+    "LKR_Test_Explained_Variance": 0.8991,
+    "LKR_Test_Median_AE": 928.2317,
+    "LKR_Test_MAPE_pct": 12.42
   },
   "Classification_Metrics_PriceTiers": {
-    "Overall_Accuracy": 0.887,
-    "Overall_Precision": 0.8872,
-    "Overall_Recall": 0.887,
-    "Overall_F1": 0.8868,
+    "Overall_Accuracy": 0.9164,
+    "Overall_Precision": 0.9165,
+    "Overall_Recall": 0.9164,
+    "Overall_F1": 0.9162,
     "Per_Tier": {
       "Budget": {
-        "Precision": 0.9211,
-        "Recall": 0.9011,
-        "F1": 0.911,
+        "Precision": 0.9401,
+        "Recall": 0.924,
+        "F1": 0.932,
         "Support": 1698
       },
       "Affordable": {
-        "Precision": 0.8778,
-        "Recall": 0.907,
-        "F1": 0.8922,
+        "Precision": 0.9075,
+        "Recall": 0.9307,
+        "F1": 0.9189,
         "Support": 2107
       },
       "Mid-Range": {
-        "Precision": 0.8149,
-        "Recall": 0.7832,
-        "F1": 0.7987,
+        "Precision": 0.875,
+        "Recall": 0.8446,
+        "F1": 0.8595,
         "Support": 489
       },
       "Premium": {
-        "Precision": 0.8354,
-        "Recall": 0.75,
-        "F1": 0.7904,
+        "Precision": 0.9125,
+        "Recall": 0.8295,
+        "F1": 0.869,
         "Support": 88
       },
       "Luxury": {
-        "Precision": 1.0,
-        "Recall": 0.7222,
-        "F1": 0.8387,
+        "Precision": 0.8889,
+        "Recall": 0.8889,
+        "F1": 0.8889,
         "Support": 18
       }
     },
     "Confusion_Matrix": [
       [
-        1530,
-        168,
+        1569,
+        129,
         0,
         0,
         0
       ],
       [
-        131,
-        1911,
-        65,
+        100,
+        1961,
+        46,
         0,
         0
       ],
       [
         0,
-        98,
-        383,
-        8,
-        0
-      ],
-      [
-        0,
-        0,
-        22,
-        66,
-        0
-      ],
-      [
-        0,
-        0,
-        0,
+        71,
+        413,
         5,
-        13
+        0
+      ],
+      [
+        0,
+        0,
+        13,
+        73,
+        2
+      ],
+      [
+        0,
+        0,
+        0,
+        2,
+        16
       ]
     ],
     "Tier_Labels": [
@@ -130,17 +135,22 @@
     ]
   },
   "Feature_Importance": {
-    "treatment": 0.2918,
-    "type": 0.2757,
-    "carat_weight": 0.219,
-    "color": 0.0753,
-    "clarity": 0.0744,
-    "shape": 0.0637
+    "carat_weight": 4046.0,
+    "x": 2488.0,
+    "color": 2338.0,
+    "depth_ratio": 2194.0,
+    "mean_width": 2190.0,
+    "y": 1981.0,
+    "z": 1568.0,
+    "type": 1485.0,
+    "shape": 1456.0,
+    "treatment": 1085.0,
+    "clarity": 1041.0
   },
   "Model_Info": {
-    "Model_Type": "XGBoostRegressor",
+    "Model_Type": "BestModel",
     "Target": "Log_Price (natural log of LKR)",
     "Output_Currency": "LKR",
-    "Evaluation_Date": "2026-04-26T03:11:03.557178"
+    "Evaluation_Date": "2026-04-28T18:39:21.013961"
   }
 }

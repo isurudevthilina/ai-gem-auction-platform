@@ -78,7 +78,10 @@ CLARITY_LABELS   = {v: k for k, v in CLARITY_MAP.items()}
 TREATMENT_LABELS = {v: k for k, v in TREATMENT_MAP.items()}
 
 # Feature order used during training (must match train.py)
-FEATURE_ORDER = ["type", "shape", "color", "clarity", "treatment", "carat_weight"]
+FEATURE_ORDER = [
+    "type", "shape", "color", "clarity", "treatment",
+    "carat_weight", "x", "y", "z", "mean_width", "depth_ratio"
+]
 
 ALL_MAPS = {
     "type":      TYPE_MAP,

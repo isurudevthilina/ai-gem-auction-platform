@@ -4,6 +4,7 @@
 import { Box, Sparkles } from 'lucide-react';
 import { T, SERIF, DISPLAY, BODY, labelStyle } from '../formTokens';
 import { useCurrency } from '../../../../context/CurrencyContext';
+import { formatLKR } from '../../../../shared/utils/currency';
 
 const StepReview = ({ getValues, imageFiles, imagePreviews }) => {
     const { formatPrice } = useCurrency();
@@ -21,11 +22,15 @@ const StepReview = ({ getValues, imageFiles, imagePreviews }) => {
         { label: 'Clarity',       value: v.clarity || '—' },
         { label: 'Cut / Shape',   value: v.cut || '—' },
         { label: 'Treatment',     value: v.treatment || '—' },
+        { label: 'Dimensions',    value: (v.x && v.y && v.z) ? `${v.x} × ${v.y} × ${v.z} mm` : '—' },
         { label: 'Certification', value: certDisplay },
         { label: 'Listing Type',  value: v.listing_type === 'direct_sell' ? 'Direct Sale' : 'Auction' },
     ];
     if (v.listing_type === 'direct_sell' && v.buy_now_price) {
         summaryRows.push({ label: 'Buy Now Price', value: formatPrice(v.buy_now_price) });
+    }
+    if (v.predicted_price) {
+        summaryRows.push({ label: 'AI Estimate', value: formatLKR(v.predicted_price) });
     }
 
     return (

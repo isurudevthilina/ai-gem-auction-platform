@@ -4,11 +4,10 @@
  * No external chart library required.
  *
  * Props:
- *   shapValues  - Array of { feature, value, contribution, direction }
+ *   shapValues  - Array of { feature, value, contribution, direction, impactLkr }
  *   maxBarWidth - Max pixel width of the bar area (default 260)
  */
 import { useEffect, useState } from 'react';
-import { useCurrency } from '../../../context/CurrencyContext';
 
 const C = {
     positive: '#10b981',
@@ -23,8 +22,12 @@ const C = {
     gold: '#f59e0b',
 };
 
+const fmtLKR = (n) => {
+    if (!n || isNaN(n)) return '—';
+    return 'LKR ' + Math.abs(n).toLocaleString('en-LK', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+};
+
 const SHAPWaterfallChart = ({ shapValues = [], maxBarWidth = 260 }) => {
-    const { formatPrice } = useCurrency();
     const [animated, setAnimated] = useState(false);
 
     // Trigger bar expansion animation on mount
@@ -35,7 +38,7 @@ const SHAPWaterfallChart = ({ shapValues = [], maxBarWidth = 260 }) => {
 
     if (!shapValues.length) return null;
 
-    const maxAbsContrib = Math.max(...shapValues.map((s) => Math.abs(s.contribution)));
+    const maxAbsImpact = Math.max(...shapValues.map((s) => Math.abs(s.impactLkr || 0)), 1);
 
     return (
         <div style={{ width: '100%' }}>
@@ -57,14 +60,15 @@ const SHAPWaterfallChart = ({ shapValues = [], maxBarWidth = 260 }) => {
                     const isPositive = item.direction === 'positive';
                     const barColor = isPositive ? C.positive : C.negative;
                     const barGlow = isPositive ? C.positiveGlow : C.negativeGlow;
-                    const barPct = maxAbsContrib > 0 ? (Math.abs(item.contribution) / maxAbsContrib) : 0;
+                    const impact = item.impactLkr || 0;
+                    const barPct = maxAbsImpact > 0 ? (Math.abs(impact) / maxAbsImpact) : 0;
                     const barW = animated ? Math.round(barPct * maxBarWidth) : 0;
-                    const sign = isPositive ? '+' : '-';
+                    const sign = isPositive ? '+' : '−';
 
                     return (
                         <div key={idx} style={{
                             display: 'grid',
-                            gridTemplateColumns: '160px 1fr 90px',
+                            gridTemplateColumns: '160px 1fr 120px',
                             alignItems: 'center',
                             gap: 14,
                             padding: '10px 14px',
@@ -104,16 +108,16 @@ const SHAPWaterfallChart = ({ shapValues = [], maxBarWidth = 260 }) => {
                                 }} />
                             </div>
 
-                            {/* Dollar value */}
+                            {/* LKR value */}
                             <div style={{
                                 textAlign: 'right',
-                                fontSize: '0.88rem',
-                                fontWeight: 800,
+                                fontSize: '0.82rem',
+                                fontWeight: 700,
                                 color: barColor,
                                 letterSpacing: '-0.01em',
                                 fontVariantNumeric: 'tabular-nums',
                             }}>
-                                {sign}{formatPrice(Math.abs(item.contribution))}
+                                {sign}{fmtLKR(impact)}
                             </div>
                         </div>
                     );
@@ -123,7 +127,7 @@ const SHAPWaterfallChart = ({ shapValues = [], maxBarWidth = 260 }) => {
             {/* ── Baseline note ── */}
             <p style={{ marginTop: 16, fontSize: '0.72rem', color: C.dim, lineHeight: 1.6 }}>
                 Each bar shows how much a feature pushes the predicted price above or below the model baseline.
-                Values represent average market dollar contribution for the given attribute.
+                Values are approximate LKR impact.
             </p>
         </div>
     );

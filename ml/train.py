@@ -9,28 +9,24 @@ Usage:
 
 The script:
   1. Loads the pre-processed CSV dataset (data/final_gem_data_for_train.csv)
-  2. Recovers approximate carat weights from the pre-processed Weight column
-  3. Uses integer-encoded categoricals directly (Type, Shape, Color, Clarity, Treatment)
-  4. Trains an XGBoost regressor predicting Log_Price with 5-fold CV
-  5. Saves the model, feature names, and log-space RMSE std to models/
-
-Note on Weight preprocessing:
-    The friend pre-processed the original carat weights so that the median became 0
-    and values are expressed as +/- deviations. We approximate the inverse with:
-        carat_weight = Weight + CARAT_RECOVERY_OFFSET
-    The offset (0.656) was validated by checking that recovered carat weights produce
-    realistic price-per-carat values for every gem type in the dataset.
-    TODO: Replace with the exact RobustScaler inverse once the friend provides it.
+  2. Applies the real RobustScaler inverse to recover original carat_weight, x, y, z
+  3. Engineers derived features: mean_width, depth_ratio
+  4. Trains 3 regressors (XGBoost, Random Forest, LightGBM) with 5-fold CV
+  5. Compares models on a hold-out test set and selects the best
+  6. Retrains the best model on the full dataset
+  7. Saves all model artifacts to models/
 """
 
 import os
 import sys
+import json
 import warnings
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import KFold, cross_val_score
-from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import KFold, cross_val_score, train_test_split
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 
 # Ensure app/ is importable when running from ml/
@@ -47,12 +43,10 @@ os.makedirs(MODEL_DIR, exist_ok=True)
 # Config
 # ---------------------------------------------------------------------------
 DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "final_gem_data_for_train.csv")
+SCALER_PATH = os.path.join(MODEL_DIR, "robust_scaler.joblib")
 
-# Approximate inverse of the friend's weight preprocessing.
-# The dataset Weight column has median≈0 and min≈-0.556.
-# Adding 0.656 shifts the minimum to ~0.1 ct and the median to ~0.66 ct,
-# which produces very realistic price-per-carat medians across all 8 gem types.
-CARAT_RECOVERY_OFFSET = 0.656
+# Scaler was fit on [Weight, X, Y, Z] in this order
+SCALER_FEATURE_ORDER = ["Weight", "X", "Y", "Z"]
 
 # ---------------------------------------------------------------------------
 # Load & prepare
@@ -64,7 +58,7 @@ def load_and_prepare(path: str) -> pd.DataFrame:
     print(f"    Columns:   {list(df.columns)}")
 
     # Required columns in the CSV
-    required = {"Type", "Shape", "Color", "Clarity", "Treatment", "Weight", "Log_Price"}
+    required = {"Type", "Shape", "Color", "Clarity", "Treatment", "Weight", "Log_Price", "X", "Y", "Z"}
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"Missing required columns: {missing}")
@@ -74,20 +68,38 @@ def load_and_prepare(path: str) -> pd.DataFrame:
     for col in cat_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce").astype(int)
 
-    # Recover approximate carat weight from pre-processed Weight
-    df["carat_weight"] = pd.to_numeric(df["Weight"], errors="coerce") + CARAT_RECOVERY_OFFSET
+    # Load real robust scaler and inverse-transform [Weight, X, Y, Z]
+    if not os.path.exists(SCALER_PATH):
+        raise FileNotFoundError(f"RobustScaler not found at {SCALER_PATH}. Place the real scaler there.")
+
+    scaler = joblib.load(SCALER_PATH)
+    scaled_vals = df[["Weight", "X", "Y", "Z"]].values
+    original_vals = scaler.inverse_transform(scaled_vals)
+
+    df["carat_weight"] = original_vals[:, 0]
+    df["x"] = original_vals[:, 1]
+    df["y"] = original_vals[:, 2]
+    df["z"] = original_vals[:, 3]
 
     # Target
     df["log_price"] = pd.to_numeric(df["Log_Price"], errors="coerce")
 
+    # Derived features
+    df["mean_width"] = (df["x"] + df["y"]) / 2.0
+    df["depth_ratio"] = df["z"] / df["mean_width"]
+
     # Keep only what we need
-    use_cols = ["Type", "Shape", "Color", "Clarity", "Treatment", "carat_weight", "log_price"]
+    use_cols = cat_cols + ["carat_weight", "x", "y", "z", "mean_width", "depth_ratio", "log_price"]
     df = df[use_cols].copy()
     df.dropna(inplace=True)
 
     # Sanity filters
     df = df[df["carat_weight"] > 0]
+    df = df[df["x"] > 0]
+    df = df[df["y"] > 0]
+    df = df[df["z"] > 0]
     df = df[df["log_price"] > 0]
+    df = df[np.isfinite(df["depth_ratio"])]
 
     # Rename to match encoders.py naming
     df.rename(columns={
@@ -100,69 +112,175 @@ def load_and_prepare(path: str) -> pd.DataFrame:
 
     print(f"    Clean rows:  {len(df)}")
     print(f"    Carat range: [{df['carat_weight'].min():.3f}, {df['carat_weight'].max():.3f}]")
+    print(f"    X range:     [{df['x'].min():.3f}, {df['x'].max():.3f}]")
+    print(f"    Y range:     [{df['y'].min():.3f}, {df['y'].max():.3f}]")
+    print(f"    Z range:     [{df['z'].min():.3f}, {df['z'].max():.3f}]")
     print(f"    LogPrice range: [{df['log_price'].min():.3f}, {df['log_price'].max():.3f}]")
     return df
 
 
 # ---------------------------------------------------------------------------
-# Train
+# Model definitions
 # ---------------------------------------------------------------------------
-def train(df: pd.DataFrame):
+def get_models():
+    """Return a dict of model_name -> (model_instance, needs_log_target)."""
+    models = {
+        "XGBoost": XGBRegressor(
+            n_estimators=800,
+            learning_rate=0.05,
+            max_depth=6,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            min_child_weight=3,
+            gamma=0.1,
+            reg_alpha=0.05,
+            reg_lambda=1.0,
+            random_state=42,
+            n_jobs=-1,
+            tree_method="hist",
+        ),
+        "RandomForest": RandomForestRegressor(
+            n_estimators=500,
+            max_depth=12,
+            min_samples_split=5,
+            min_samples_leaf=2,
+            max_features="sqrt",
+            random_state=42,
+            n_jobs=-1,
+        ),
+    }
+
+    # LightGBM is optional
+    try:
+        import lightgbm as lgb
+        models["LightGBM"] = lgb.LGBMRegressor(
+            n_estimators=800,
+            learning_rate=0.05,
+            max_depth=6,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            reg_alpha=0.05,
+            reg_lambda=1.0,
+            random_state=42,
+            n_jobs=-1,
+            verbose=-1,
+        )
+    except ImportError:
+        print("⚠️  LightGBM not installed. Skipping LightGBM model.")
+
+    return models
+
+
+# ---------------------------------------------------------------------------
+# Evaluate helper
+# ---------------------------------------------------------------------------
+def evaluate_model(model, X_test, y_test):
+    y_pred = model.predict(X_test)
+    rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+    mae = mean_absolute_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    mape = np.mean(np.abs((y_test - y_pred) / y_test)) * 100
+    return {"rmse": rmse, "mae": mae, "r2": r2, "mape": mape}
+
+
+# ---------------------------------------------------------------------------
+# Train & compare
+# ---------------------------------------------------------------------------
+def train_and_compare(df: pd.DataFrame):
     X = df[FEATURE_ORDER].values
     y = df["log_price"].values
 
-    model = XGBRegressor(
-        n_estimators=800,
-        learning_rate=0.05,
-        max_depth=6,
-        subsample=0.8,
-        colsample_bytree=0.8,
-        min_child_weight=3,
-        gamma=0.1,
-        reg_alpha=0.05,
-        reg_lambda=1.0,
-        random_state=42,
-        n_jobs=-1,
-        tree_method="hist",
+    # Train/test split for fair comparison (20% hold-out)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
     )
 
-    print("\n🔀  Running 5-fold cross-validation (log-space) …")
+    models = get_models()
+    results = {}
+    trained_models = {}
+    cv_scores = {}
+
     kf = KFold(n_splits=5, shuffle=True, random_state=42)
-    neg_mse_scores = cross_val_score(model, X, y, cv=kf, scoring="neg_mean_squared_error", n_jobs=-1)
-    rmse_scores = np.sqrt(-neg_mse_scores)
-    print(f"    CV log-RMSE scores: {np.round(rmse_scores, 4)}")
-    mean_rmse = float(rmse_scores.mean())
-    std_rmse = float(rmse_scores.std())
-    print(f"    Mean log-RMSE: {mean_rmse:.4f}  |  Std: {std_rmse:.4f}")
 
-    # Approximate median percentage error in LKR space
-    median_pct_err = (np.exp(mean_rmse) - 1) * 100
-    print(f"    ≈ Median LKR % error: {median_pct_err:.1f}%")
+    print("\n" + "=" * 60)
+    print("🏋️  TRAINING & COMPARING MODELS")
+    print("=" * 60)
 
-    print("\n🏋️  Training final model on full dataset …")
-    model.fit(X, y)
+    for name, model in models.items():
+        print(f"\n📌 {name}")
 
-    return model, mean_rmse
+        # 5-fold CV on log-space RMSE
+        neg_mse = cross_val_score(model, X_train, y_train, cv=kf,
+                                   scoring="neg_mean_squared_error", n_jobs=-1)
+        rmse_scores = np.sqrt(-neg_mse)
+        print(f"    CV log-RMSE: {np.round(rmse_scores, 4)}")
+        print(f"    Mean: {rmse_scores.mean():.4f}  |  Std: {rmse_scores.std():.4f}")
+        cv_scores[name] = float(rmse_scores.std())
+
+        # Train on full train split for test evaluation
+        model.fit(X_train, y_train)
+        metrics = evaluate_model(model, X_test, y_test)
+        print(f"    Test log-RMSE: {metrics['rmse']:.4f}")
+        print(f"    Test R²:       {metrics['r2']:.4f}")
+        print(f"    Test MAPE:     {metrics['mape']:.2f}%")
+
+        results[name] = metrics
+        trained_models[name] = model
+
+    # Select best model by Test R² (primary), then lower RMSE
+    best_name = max(results, key=lambda n: (results[n]["r2"], -results[n]["rmse"]))
+    print("\n" + "=" * 60)
+    print("🏆 BEST MODEL:", best_name)
+    print("=" * 60)
+    for name, m in results.items():
+        marker = "✅" if name == best_name else "  "
+        print(f"{marker} {name:<14} R²={m['r2']:.4f}  RMSE={m['rmse']:.4f}  MAPE={m['mape']:.2f}%")
+
+    # Retrain best model on FULL dataset for production
+    print(f"\n🔁 Retraining {best_name} on full dataset …")
+    best_model = trained_models[best_name]
+    best_model.fit(X, y)
+
+    return best_model, best_name, cv_scores[best_name], results, trained_models
 
 
 # ---------------------------------------------------------------------------
 # Save
 # ---------------------------------------------------------------------------
-def save_artifacts(model, rmse_std: float):
-    model_path = os.path.join(MODEL_DIR, "gem_price_model.pkl")
-    rmse_path  = os.path.join(MODEL_DIR, "rmse_std.pkl")
-    feat_path  = os.path.join(MODEL_DIR, "feature_names.pkl")
-    offset_path = os.path.join(MODEL_DIR, "carat_offset.pkl")
+def save_artifacts(best_model, best_name: str, rmse_std: float,
+                   all_results: dict, all_models: dict):
+    # Best model artifacts
+    joblib.dump(best_model, os.path.join(MODEL_DIR, "best_model.pkl"))
+    joblib.dump(best_name, os.path.join(MODEL_DIR, "best_model_name.pkl"))
+    joblib.dump(rmse_std, os.path.join(MODEL_DIR, "rmse_std.pkl"))
+    joblib.dump(FEATURE_ORDER, os.path.join(MODEL_DIR, "feature_names.pkl"))
 
-    joblib.dump(model,       model_path)
-    joblib.dump(rmse_std,    rmse_path)
-    joblib.dump(FEATURE_ORDER, feat_path)
-    joblib.dump(CARAT_RECOVERY_OFFSET, offset_path)
+    # Individual model backups
+    for name, model in all_models.items():
+        fname = name.lower().replace(" ", "_") + "_model.pkl"
+        joblib.dump(model, os.path.join(MODEL_DIR, fname))
 
-    print(f"\n✅  Model saved      → {model_path}")
-    print(f"    RMSE std saved   → {rmse_path}")
-    print(f"    Features saved   → {feat_path}")
-    print(f"    Carat offset saved → {offset_path}")
+    # Comparison JSON
+    comparison = {
+        "best_model": best_name,
+        "best_metrics": all_results[best_name],
+        "all_models": {
+            name: {k: round(v, 6) if isinstance(v, float) else v for k, v in metrics.items()}
+            for name, metrics in all_results.items()
+        },
+        "feature_order": FEATURE_ORDER,
+    }
+    with open(os.path.join(MODEL_DIR, "model_comparison.json"), "w") as f:
+        json.dump(comparison, f, indent=2)
+
+    print(f"\n✅  Best model saved      → {os.path.join(MODEL_DIR, 'best_model.pkl')}")
+    print(f"    Model name saved      → {os.path.join(MODEL_DIR, 'best_model_name.pkl')}")
+    print(f"    RMSE std saved        → {os.path.join(MODEL_DIR, 'rmse_std.pkl')}")
+    print(f"    Features saved        → {os.path.join(MODEL_DIR, 'feature_names.pkl')}")
+    print(f"    Comparison JSON saved → {os.path.join(MODEL_DIR, 'model_comparison.json')}")
+    for name in all_models:
+        fname = name.lower().replace(" ", "_") + "_model.pkl"
+        print(f"    {name} backup saved   → {os.path.join(MODEL_DIR, fname)}")
 
 
 # ---------------------------------------------------------------------------
@@ -174,7 +292,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     df = load_and_prepare(DATA_PATH)
-    model, rmse_std = train(df)
-    save_artifacts(model, rmse_std)
+    best_model, best_name, rmse_std, results, all_models = train_and_compare(df)
+    save_artifacts(best_model, best_name, rmse_std, results, all_models)
+
     print("\n🎉  Training complete. Start the API with:")
     print("    uvicorn app.main:app --reload --port 8000")

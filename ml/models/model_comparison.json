@@ -1,0 +1,42 @@
+{
+  "best_model": "LightGBM",
+  "best_metrics": {
+    "rmse": 0.22719420298008927,
+    "mae": 0.14616666335023937,
+    "r2": 0.959234702664548,
+    "mape": 1.5079951191901726
+  },
+  "all_models": {
+    "XGBoost": {
+      "rmse": 0.22971,
+      "mae": 0.148297,
+      "r2": 0.958327,
+      "mape": 1.525582
+    },
+    "RandomForest": {
+      "rmse": 0.265307,
+      "mae": 0.172561,
+      "r2": 0.944411,
+      "mape": 1.774428
+    },
+    "LightGBM": {
+      "rmse": 0.227194,
+      "mae": 0.146167,
+      "r2": 0.959235,
+      "mape": 1.507995
+    }
+  },
+  "feature_order": [
+    "type",
+    "shape",
+    "color",
+    "clarity",
+    "treatment",
+    "carat_weight",
+    "x",
+    "y",
+    "z",
+    "mean_width",
+    "depth_ratio"
+  ]
+}
