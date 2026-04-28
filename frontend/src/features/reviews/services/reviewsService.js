@@ -26,6 +26,54 @@ const apiFetch = async (path, options = {}) => {
   return data;
 };
 
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
+const VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'mov']);
+const FALLBACK_CONTENT_TYPES = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  mov: 'video/quicktime',
+};
+
+const getFileExtension = (file) =>
+  String(file?.name || '').split('.').pop()?.toLowerCase() || '';
+
+export const getReviewMediaInfo = (file) => {
+  const ext = getFileExtension(file);
+  const mime = String(file?.type || '').toLowerCase();
+
+  if (mime.startsWith('image/') || IMAGE_EXTENSIONS.has(ext)) {
+    return { ext, mediaType: 'image', contentType: mime || FALLBACK_CONTENT_TYPES[ext] || 'image/jpeg' };
+  }
+
+  if (mime.startsWith('video/') || VIDEO_EXTENSIONS.has(ext)) {
+    return { ext, mediaType: 'video', contentType: mime || FALLBACK_CONTENT_TYPES[ext] || 'video/mp4' };
+  }
+
+  return null;
+};
+
+export const validateReviewMediaFile = (file) => {
+  const media = getReviewMediaInfo(file);
+  if (!media || !media.ext) {
+    throw new Error('Only JPG, PNG, WebP, GIF, MP4, WebM, or MOV files are allowed.');
+  }
+
+  if (media.mediaType === 'image' && !IMAGE_EXTENSIONS.has(media.ext)) {
+    throw new Error('Only JPG, PNG, WebP, or GIF images are allowed.');
+  }
+
+  if (media.mediaType === 'video' && !VIDEO_EXTENSIONS.has(media.ext)) {
+    throw new Error('Only MP4, WebM, or MOV videos are allowed.');
+  }
+
+  return media;
+};
+
 export const createReview = (data) =>
   apiFetch('/api/reviews', {
     method: 'POST', body: JSON.stringify(data),
@@ -87,8 +135,7 @@ export const getMyReviewReports = (filters = {}) => {
 };
 
 export const uploadReviewMedia = async (file) => {
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-  const mediaType = file.type?.startsWith('video/') ? 'video' : 'image';
+  const { ext, mediaType, contentType } = validateReviewMediaFile(file);
 
   const res = await apiFetch('/api/reviews/upload-url', {
     method: 'POST',
@@ -98,7 +145,7 @@ export const uploadReviewMedia = async (file) => {
   const { path, token } = res.data;
   const { error } = await supabase.storage
     .from('review-media')
-    .uploadToSignedUrl(path, token, file, { contentType: file.type });
+    .uploadToSignedUrl(path, token, file, { contentType });
 
   if (error) throw error;
 

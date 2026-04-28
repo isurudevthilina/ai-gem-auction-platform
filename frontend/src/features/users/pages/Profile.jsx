@@ -5,7 +5,9 @@ import {
     useGetProfile,
     useUpdateProfile,
     useUpdateAvatar,
+    useRequestEmailChangeOTP,
     useChangeEmail,
+    useRequestPasswordChangeOTP,
     useChangePassword,
     useDeleteAccount,
 } from '../hooks/useProfile';
@@ -84,7 +86,9 @@ const Profile = () => {
     const { data: profile, isLoading, error } = useGetProfile();
     const updateProfile = useUpdateProfile();
     const updateAvatar  = useUpdateAvatar();
+    const requestEmailOTP = useRequestEmailChangeOTP();
     const changeEmail   = useChangeEmail();
+    const requestPasswordOTP = useRequestPasswordChangeOTP();
     const changePassword = useChangePassword();
     const deleteAccount  = useDeleteAccount();
 
@@ -113,11 +117,27 @@ const Profile = () => {
         });
     };
 
+    const handleEmailOTPRequest = (data, opts) => {
+        setEmailError('');
+        requestEmailOTP.mutate(data, {
+            onSuccess: () => { showToast('Verification code sent to your new email.'); opts?.onSuccess?.(); },
+            onError: (e) => setEmailError(e.message || 'Failed to send verification code.'),
+        });
+    };
+
     const handleEmailChange = (data, opts) => {
         setEmailError('');
         changeEmail.mutate(data, {
-            onSuccess: () => { showToast('Email updated. Please verify your new email.'); opts?.onSuccess?.(); refreshUser(); },
+            onSuccess: () => { showToast('Email updated.'); opts?.onSuccess?.(); refreshUser(); },
             onError: (e) => setEmailError(e.message || 'Failed to change email.'),
+        });
+    };
+
+    const handlePasswordOTPRequest = (data, opts) => {
+        setPasswordError('');
+        requestPasswordOTP.mutate(data, {
+            onSuccess: () => { showToast('Verification code sent to your email.'); opts?.onSuccess?.(); },
+            onError: (e) => setPasswordError(e.message || 'Failed to send verification code.'),
         });
     };
 
@@ -193,13 +213,17 @@ const Profile = () => {
                     />
 
                     <ChangeEmailForm
+                        onRequestOTP={handleEmailOTPRequest}
                         onSubmit={handleEmailChange}
+                        isRequesting={requestEmailOTP.isPending}
                         isPending={changeEmail.isPending}
                         serverError={emailError}
                     />
 
                     <ChangePasswordForm
+                        onRequestOTP={handlePasswordOTPRequest}
                         onSubmit={handlePasswordChange}
+                        isRequesting={requestPasswordOTP.isPending}
                         isPending={changePassword.isPending}
                         serverError={passwordError}
                     />

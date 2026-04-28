@@ -29,10 +29,17 @@ const cleanupWatchlistSchema = z.object({
     days: z.coerce.number().int().min(1, 'Time period must be at least 1 day').max(365, 'Maximum 365 days').default(30),
 });
 
+const updatePrioritySchema = z.object({
+    priority: z.enum(['high', 'medium', 'low'], {
+        message: 'Priority must be high, medium, or low',
+    }),
+});
+
 module.exports = {
     createFolderSchema,
     renameFolderSchema,
     addToWatchlistSchema,
     moveToFolderSchema,
     cleanupWatchlistSchema,
+    updatePrioritySchema,
 };

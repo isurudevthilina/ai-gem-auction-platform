@@ -85,6 +85,13 @@ export const verifyCertificate = (id, notes) =>
         body: JSON.stringify({ notes }),
     });
 
+/** Admin — send certificate to authority by email and record authority approval */
+export const sendAuthorityVerification = (id, payload = {}) =>
+    apiFetch(`/api/certificates/${id}/send-authority-verification`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+    });
+
 /** Admin — reject a certificate */
 export const rejectCertificate = (id, notes) =>
     apiFetch(`/api/certificates/${id}/reject`, {

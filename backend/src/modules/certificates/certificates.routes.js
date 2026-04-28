@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const ctrl = require('./certificates.controller');
 const { authenticate, requireRole } = require('../../middleware/auth.middleware');
-const { validate, createCertificateSchema, verifyCertificateSchema, rejectCertificateSchema } = require('./certificates.validation');
+const { validate, createCertificateSchema, verifyCertificateSchema, rejectCertificateSchema, authorityVerificationSchema } = require('./certificates.validation');
 
 // Upload URL (existing)
 router.post('/upload-url', authenticate, ctrl.getUploadUrl);
@@ -30,6 +30,9 @@ router.get('/:id', authenticate, ctrl.getCertificateById);
 
 // Verify (existing, now with validation)
 router.patch('/:id/verify', authenticate, requireRole('admin'), validate(verifyCertificateSchema), ctrl.verifyCertificate);
+
+// Demo authority email + authority approval audit
+router.patch('/:id/send-authority-verification', authenticate, requireRole('admin'), validate(authorityVerificationSchema), ctrl.sendAuthorityVerification);
 
 // Reject (existing, now with validation)
 router.patch('/:id/reject', authenticate, requireRole('admin'), validate(rejectCertificateSchema), ctrl.rejectCertificate);

@@ -4,7 +4,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Pencil, XCircle, Gem, Sparkles, Share2 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import BidPanel from '../components/BidPanel';
@@ -19,6 +19,7 @@ import useLiveBids from '../hooks/useLiveBids';
 import useCountdown from '../hooks/useCountdown';
 import { deleteAuction } from '../services/auctionsService';
 import RatingSummary from '../../reviews/components/RatingSummary';
+import { getAuctionState, isAuctionEnded } from '../utils/auctionState';
 
 const C = {
     bg:        '#F0EDE8',
@@ -48,7 +49,7 @@ const card = {
 const OutbidToast = ({ visible, onClose }) => (
     <AnimatePresence>
         {visible && (
-            <motion.div
+            <Motion.div
                 initial={{ opacity: 0, y: -30 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -30 }}
@@ -67,7 +68,7 @@ const OutbidToast = ({ visible, onClose }) => (
                 <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginLeft: 8 }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                 </button>
-            </motion.div>
+            </Motion.div>
         )}
     </AnimatePresence>
 );
@@ -121,9 +122,13 @@ const LiveAuctionPage = () => {
     }
 
     const noBids = (auction.bid_count || 0) === 0;
-    const isActive = auction.status === 'active' && !countdown.expired;
-    const isScheduled = auction.status === 'active' && new Date(auction.start_time) > new Date();
+    const auctionState = getAuctionState(auction);
+    const isActive = auctionState === 'live';
+    const isScheduled = auctionState === 'scheduled';
+    const isEnded = isAuctionEnded(auction);
+    const isCancelled = auctionState === 'cancelled';
     const isOwner = user?.id === auction.seller_id || user?.id === seller?.id || user?.role === 'admin';
+    const canManageAuction = isOwner && ((isActive || isScheduled) && (noBids || user?.role === 'admin') || (isCancelled && noBids));
 
     const specs = [
         { label: 'Carat Weight', value: gem.carat_weight ? `${gem.carat_weight} ct` : null },
@@ -153,7 +158,7 @@ const LiveAuctionPage = () => {
                         <button title="Share" style={{ width: 36, height: 36, borderRadius: 10, background: C.bg, border: `1px solid ${C.border}`, color: C.muted, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                             <Share2 size={15} />
                         </button>
-                        {isOwner && isActive && (
+                        {canManageAuction && (
                             <>
                                 <button onClick={() => setShowEditModal(true)} title="Edit Auction" style={{ width: 36, height: 36, borderRadius: 10, background: C.sapphireBg, border: '1px solid rgba(26,77,140,0.15)', color: C.sapphire, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                                     <Pencil size={15} />
@@ -171,13 +176,19 @@ const LiveAuctionPage = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: 36, alignItems: 'start' }}>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-                        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+                        <Motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
                                 {isActive && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.25)', borderRadius: 20, padding: '4px 14px' }}>
                                         <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.green, boxShadow: `0 0 6px ${C.green}`, animation: 'pulse 1.5s infinite' }} />
                                         <span style={{ color: C.green, fontSize: '0.72rem', fontFamily: DISPLAY, fontWeight: 700, letterSpacing: '0.06em' }}>LIVE</span>
                                     </div>
+                                )}
+                                {isScheduled && (
+                                    <span style={{ background: 'rgba(26,77,140,0.08)', border: '1px solid rgba(26,77,140,0.2)', borderRadius: 20, padding: '4px 14px', color: C.sapphire, fontSize: '0.72rem', fontFamily: DISPLAY, fontWeight: 700 }}>UPCOMING</span>
+                                )}
+                                {isEnded && auction.status !== 'completed' && auction.status !== 'cancelled' && (
+                                    <span style={{ background: 'rgba(26,77,140,0.08)', border: '1px solid rgba(26,77,140,0.2)', borderRadius: 20, padding: '4px 14px', color: C.sapphire, fontSize: '0.72rem', fontFamily: DISPLAY, fontWeight: 700 }}>ENDED</span>
                                 )}
                                 {auction.status === 'completed' && (
                                     <span style={{ background: 'rgba(26,77,140,0.08)', border: '1px solid rgba(26,77,140,0.2)', borderRadius: 20, padding: '4px 14px', color: C.sapphire, fontSize: '0.72rem', fontFamily: DISPLAY, fontWeight: 700 }}>COMPLETED</span>
@@ -198,11 +209,11 @@ const LiveAuctionPage = () => {
                                 <span>{auction.bid_count || 0} bid{auction.bid_count !== 1 ? 's' : ''}</span>
                                 {!noBids && (<><span style={{ color: C.faint }}>·</span><span>Current: <strong style={{ color: C.gold }}>{formatPrice(auction.current_price)}</strong></span></>)}
                             </div>
-                        </motion.div>
+                        </Motion.div>
 
-                        <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}>
+                        <Motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}>
                             <GemImageGallery images={gem.images || []} />
-                        </motion.div>
+                        </Motion.div>
 
                         {specs.length > 0 && (
                             <div style={{ ...card, padding: '28px 32px' }}>
@@ -238,10 +249,12 @@ const LiveAuctionPage = () => {
                                 )}
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontFamily: BODY, fontSize: '0.92rem', fontWeight: 700, color: C.text }}>{seller?.full_name || 'Seller'}</div>
-                                    <div style={{ fontFamily: BODY, fontSize: '0.72rem', color: C.gold, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.gold, display: 'inline-block' }} />
-                                        Verified Seller
-                                    </div>
+                                    {seller?.is_verified && (
+                                        <div style={{ fontFamily: BODY, fontSize: '0.72rem', color: C.gold, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.gold, display: 'inline-block' }} />
+                                            Verified Seller
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div style={{ borderTop: `1px solid ${C.border}`, padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(240,237,232,0.4)' }}>
@@ -255,7 +268,7 @@ const LiveAuctionPage = () => {
                         <div style={{ ...card, padding: '20px 24px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                                 <div style={{ fontFamily: DISPLAY, fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: countdown.expired ? C.muted : C.faint }}>
-                                    {countdown.expired ? 'Auction Ended' : 'Time Remaining'}
+                                    {isEnded ? 'Auction Ended' : isScheduled ? 'Auction Scheduled' : 'Time Remaining'}
                                 </div>
                                 {isActive && (
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -277,7 +290,7 @@ const LiveAuctionPage = () => {
                             </div>
                         )}
 
-                        <BidPanel auction={auction} isExpired={countdown.expired} onBidPlaced={() => {}} />
+                        <BidPanel auction={auction} isExpired={isEnded} onBidPlaced={() => {}} />
                         <LiveBidFeed bids={bids} isConnected={isConnected} />
                     </div>
                 </div>
@@ -293,11 +306,11 @@ const LiveAuctionPage = () => {
                         <div style={{ width: 56, height: 56, borderRadius: '50%', margin: '0 auto 18px', background: 'rgba(185,28,28,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <XCircle size={26} color={C.red} />
                         </div>
-                        <h2 style={{ margin: '0 0 8px', fontFamily: SERIF, fontSize: '1.4rem', fontWeight: 700, color: C.text }}>{isScheduled ? 'Delete Auction?' : 'Cancel Auction?'}</h2>
+                        <h2 style={{ margin: '0 0 8px', fontFamily: SERIF, fontSize: '1.4rem', fontWeight: 700, color: C.text }}>{isScheduled || isCancelled ? 'Delete Auction?' : 'Cancel Auction?'}</h2>
                         <p style={{ margin: '0 0 22px', fontFamily: BODY, fontSize: '0.85rem', color: C.muted, lineHeight: 1.6 }}>
-                            {isScheduled
-                                ? 'This will permanently delete the upcoming auction and return the gem to your listings.'
-                                : <>This will cancel the auction and return the gem to draft status.{(auction.bid_count || 0) > 0 ? ' All existing bids will be voided.' : ''} This action cannot be undone.</>}
+                            {isScheduled || isCancelled
+                                ? 'This will permanently delete the auction and return the gem to your listings.'
+                                : <>This will cancel the auction and return the gem to your listings.{(auction.bid_count || 0) > 0 ? ' All existing bids will be voided.' : ''} This action cannot be undone.</>}
                         </p>
                         {cancelError && (
                             <div style={{ margin: '0 0 18px', padding: '10px 16px', borderRadius: 10, background: 'rgba(185,28,28,0.06)', border: '1px solid rgba(185,28,28,0.15)', fontFamily: BODY, fontSize: '0.82rem', color: C.red, fontWeight: 600 }}>{cancelError}</div>
@@ -314,7 +327,7 @@ const LiveAuctionPage = () => {
                                 catch (err) { setCancelError(err?.response?.data?.message || err.message || 'Failed to cancel auction'); }
                                 finally { setCancelling(false); }
                             }} style={{ padding: '11px 24px', borderRadius: 10, border: 'none', cursor: cancelling ? 'not-allowed' : 'pointer', background: C.red, color: '#fff', fontFamily: BODY, fontSize: '0.85rem', fontWeight: 700, opacity: cancelling ? 0.7 : 1 }}>
-                                {cancelling ? (isScheduled ? 'Deleting…' : 'Cancelling…') : (isScheduled ? 'Delete Auction' : 'Cancel Auction')}
+                                {cancelling ? (isScheduled || isCancelled ? 'Deleting…' : 'Cancelling…') : (isScheduled || isCancelled ? 'Delete Auction' : 'Cancel Auction')}
                             </button>
                         </div>
                     </div>

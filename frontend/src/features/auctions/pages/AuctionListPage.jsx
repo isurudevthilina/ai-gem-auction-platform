@@ -5,6 +5,7 @@ import { Search, ChevronDown, LayoutGrid, List, SlidersHorizontal, X } from 'luc
 import AuctionCard from '../components/AuctionCard';
 import FilterSidebar from '../../../shared/components/FilterSidebar';
 import { getAuctions } from '../services/auctionsService';
+import { isAuctionLive } from '../utils/auctionState';
 
 /* ── Design tokens ── */
 const C = {
@@ -124,6 +125,8 @@ const AuctionListPage = () => {
                 limit: LIMIT,
                 sort,
                 order,
+                min_price: minPrice || undefined,
+                max_price: maxPrice || undefined,
             };
             if (status === 'upcoming') {
                 params.upcoming = true;
@@ -139,9 +142,9 @@ const AuctionListPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [status, search, page, sortIdx]);
+    }, [status, search, page, sortIdx, minPrice, maxPrice]);
 
-    useEffect(() => { setPage(1); }, [status, search, sortIdx]);
+    useEffect(() => { setPage(1); }, [status, search, sortIdx, minPrice, maxPrice]);
     useEffect(() => { fetchAuctions(); }, [fetchAuctions]);
 
     const [searchInput, setSearchInput] = useState('');
@@ -185,9 +188,7 @@ const AuctionListPage = () => {
 
     /* ── Live indicator strip ── */
     const liveCount = auctions.filter(a => {
-        const now = Date.now();
-        const start = new Date(a.start_time).getTime();
-        return a.status === 'active' && start <= now;
+        return isAuctionLive(a);
     }).length;
 
     return (

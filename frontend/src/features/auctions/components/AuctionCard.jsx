@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Award, Gavel } from 'lucide-react';
 import Countdown from './Countdown';
 import { useCurrency } from '../../../context/CurrencyContext';
+import { getAuctionStatusLabel } from '../utils/auctionState';
 
 /* ── Design tokens (matching GemListPage) ── */
 const C = {
@@ -29,15 +30,6 @@ const STATUS_MAP = {
     CANCELLED: { color: C.red,    bg: 'rgba(185,28,28,0.06)',  border: 'rgba(185,28,28,0.15)',  accent: C.red   },
 };
 
-const getStatusLabel = (auction) => {
-    const now = Date.now();
-    const start = new Date(auction.start_time).getTime();
-    if (auction.status === 'cancelled') return 'CANCELLED';
-    if (auction.status === 'completed') return 'ENDED';
-    if (auction.status === 'active' && start > now) return 'UPCOMING';
-    return 'LIVE';
-};
-
 /* ══════════════════════════════════════════════
    AuctionCard — Vostok-inspired portrait card
 ══════════════════════════════════════════════ */
@@ -50,7 +42,7 @@ const AuctionCard = ({ auction }) => {
     const cover = imgs[0];
     const alt   = imgs[1] || cover;
     const noBids = (auction?.bid_count || 0) === 0;
-    const statusLabel = getStatusLabel(auction);
+    const statusLabel = getAuctionStatusLabel(auction);
     const st = STATUS_MAP[statusLabel];
     const showCountdown = statusLabel === 'LIVE' || statusLabel === 'UPCOMING';
     const certsArr = gem.certificates ? (Array.isArray(gem.certificates) ? gem.certificates : [gem.certificates]) : [];
@@ -175,7 +167,7 @@ const AuctionCard = ({ auction }) => {
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                         }}
                     >
-                        <Gavel size={12} /> Place Bid
+                        <Gavel size={12} /> {statusLabel === 'LIVE' ? 'Place Bid' : 'View Auction'}
                     </button>
                 </div>
             </div>

@@ -52,6 +52,11 @@ const checkWatchlist = catchAsync(async (req, res) => {
     apiResponse(res, 200, result, 'Watchlist check complete.');
 });
 
+const updatePriority = catchAsync(async (req, res) => {
+    const item = await service.updatePriority(req.user.id, req.params.id, req.body.priority);
+    apiResponse(res, 200, item, 'Priority updated.');
+});
+
 module.exports = {
     getFolders,
     createFolder,
@@ -63,4 +68,5 @@ module.exports = {
     removeOlderThan,
     moveToFolder,
     checkWatchlist,
+    updatePriority,
 };

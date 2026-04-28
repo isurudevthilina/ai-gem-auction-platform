@@ -6,6 +6,7 @@ import CertificateFilters from '../components/CertificateFilters';
 import CertificateCard from '../components/CertificateCard';
 import CertificateDetailModal from '../components/CertificateDetailModal';
 import VerifyRejectModal from '../components/VerifyRejectModal';
+import AuthorityEmailModal from '../components/AuthorityEmailModal';
 
 const C = {
     bg: '#F0EDE8', white: '#FFFFFF', sapphire: '#1A4D8C', gold: '#C4892A',
@@ -39,6 +40,7 @@ const CertificateReviewPanel = () => {
     });
     const [selectedCert, setSelectedCert] = useState(null);
     const [actionModal, setActionModal] = useState(null);
+    const [authorityModalCert, setAuthorityModalCert] = useState(null);
     const [toast, setToast] = useState(null);
 
     const { data: certsData, isLoading } = useGetAdminCertificates(filters);
@@ -142,6 +144,7 @@ const CertificateReviewPanel = () => {
                                     onVerify={(c) => setActionModal({ mode: 'verify', cert: c })}
                                     onReject={(c) => setActionModal({ mode: 'reject', cert: c })}
                                     onViewDetail={(c) => setSelectedCert(c)}
+                                    onSendAuthority={(c) => setAuthorityModalCert(c)}
                                 />
                             ))}
                         </div>
@@ -192,6 +195,7 @@ const CertificateReviewPanel = () => {
                         onClose={() => setSelectedCert(null)}
                         onVerify={(c) => setActionModal({ mode: 'verify', cert: c })}
                         onReject={(c) => setActionModal({ mode: 'reject', cert: c })}
+                        onSendAuthority={(c) => setAuthorityModalCert(c)}
                     />
                 )}
 
@@ -209,6 +213,19 @@ const CertificateReviewPanel = () => {
                                     ? 'Certificate verified successfully'
                                     : 'Certificate rejected'
                             );
+                        }}
+                    />
+                )}
+
+                {/* Authority email modal */}
+                {authorityModalCert && (
+                    <AuthorityEmailModal
+                        cert={authorityModalCert}
+                        onClose={() => setAuthorityModalCert(null)}
+                        onSuccess={() => {
+                            setAuthorityModalCert(null);
+                            setSelectedCert(null);
+                            showToast('Authority approved. Admin verification still required.');
                         }}
                     />
                 )}

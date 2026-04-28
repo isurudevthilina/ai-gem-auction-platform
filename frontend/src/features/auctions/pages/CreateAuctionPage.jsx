@@ -13,6 +13,7 @@ import { getMyGems } from '../../gems/services/gemsService';
 import { createAuction } from '../services/auctionsService';
 import { CheckCircle, AlertCircle, X, Clock, DollarSign, Gavel, ArrowRight, Gem, ChevronDown } from 'lucide-react';
 import { useCurrency } from '../../../context/CurrencyContext';
+import { localDateTimeWithOffset } from '../utils/auctionState';
 
 /* ── Design tokens (matching project palette) ── */
 const T = {
@@ -40,12 +41,6 @@ const DURATION_PRESETS = [
     { label: '3 days',   hours: 72 },
     { label: '7 days',   hours: 168 },
 ];
-
-/* ── Helper: local datetime string for input default ── */
-const localISOString = (offsetHours = 0) => {
-    const d = new Date(Date.now() + offsetHours * 3_600_000);
-    return d.toISOString().slice(0, 16);
-};
 
 /* ── Toast component ── */
 const Toast = ({ message, type = 'success', onClose }) => (
@@ -117,8 +112,8 @@ const CreateAuctionPage = () => {
         starting_price:    '',
         reserve_price:     '',
         min_bid_increment: '10',
-        start_time:        localISOString(0),
-        end_time:          localISOString(24),
+        start_time:        localDateTimeWithOffset(0),
+        end_time:          localDateTimeWithOffset(24),
     });
     const [activeDuration, setActiveDuration] = useState(3); // index of "1 day"
     const [submitting, setSubmitting]   = useState(false);
@@ -166,7 +161,7 @@ const CreateAuctionPage = () => {
     const handleDuration = (idx) => {
         setActiveDuration(idx);
         const preset = DURATION_PRESETS[idx];
-        set('end_time', localISOString(preset.hours));
+        set('end_time', localDateTimeWithOffset(preset.hours));
     };
 
     /* ── Auto-dismiss toast ── */

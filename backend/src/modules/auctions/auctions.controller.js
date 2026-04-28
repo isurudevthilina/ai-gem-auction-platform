@@ -64,7 +64,11 @@ const cancelAuction = catchAsync(async (req, res) => {
     if (result.error === 'forbidden')  return res.status(403).json({ success: false, message: 'You do not own this auction.' });
     if (result.error === 'not_active') return res.status(400).json({ success: false, message: 'Auction is not active.' });
     if (result.error === 'has_bids')   return res.status(400).json({ success: false, message: 'Cannot delete — bids exist. Contact admin.' });
-    res.json({ success: true, message: 'Auction cancelled successfully.' });
+    res.json({
+        success: true,
+        message: result.hard_deleted ? 'Auction deleted successfully.' : 'Auction cancelled successfully.',
+        hard_deleted: Boolean(result.hard_deleted),
+    });
 });
 
 module.exports = { listAuctions, getAuction, createAuction, getMyAuctions, updateAuction, cancelAuction };

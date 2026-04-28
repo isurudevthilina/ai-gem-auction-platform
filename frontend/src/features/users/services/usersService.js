@@ -44,10 +44,16 @@ export const updateAvatar = async (file) => {
 };
 
 /** Change email */
+export const requestEmailChangeOTP = (payload) =>
+    apiFetch('/api/users/me/email/otp', { method: 'POST', body: JSON.stringify(payload) });
+
 export const changeEmail = (payload) =>
     apiFetch('/api/users/me/email', { method: 'PATCH', body: JSON.stringify(payload) });
 
 /** Change password */
+export const requestPasswordChangeOTP = (payload) =>
+    apiFetch('/api/users/me/password/otp', { method: 'POST', body: JSON.stringify(payload) });
+
 export const changePassword = (payload) =>
     apiFetch('/api/users/me/password', { method: 'PATCH', body: JSON.stringify(payload) });
 

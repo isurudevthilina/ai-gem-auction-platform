@@ -9,6 +9,7 @@ const {
     addToWatchlistSchema,
     moveToFolderSchema,
     cleanupWatchlistSchema,
+    updatePrioritySchema,
 } = require('./watchlist.validation');
 
 router.use(authenticate);
@@ -28,5 +29,6 @@ router.post('/', validate(addToWatchlistSchema), controller.addToWatchlist);
 router.delete('/older-than', validate(cleanupWatchlistSchema), controller.removeOlderThan);
 router.delete('/:gemId', controller.removeFromWatchlist);
 router.patch('/:id/move', validate(moveToFolderSchema), controller.moveToFolder);
+router.patch('/:id/priority', validate(updatePrioritySchema), controller.updatePriority);
 
 module.exports = router;

@@ -247,10 +247,12 @@ const GemDetails = () => {
                                 )}
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontFamily: BODY, fontSize: '0.92rem', fontWeight: 700, color: T.text }}>{sellerName}</div>
-                                    <div style={{ fontFamily: BODY, fontSize: '0.72rem', color: T.gold, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: T.gold, display: 'inline-block' }} />
-                                        Verified Seller
-                                    </div>
+                                    {gem.seller?.is_verified && (
+                                        <div style={{ fontFamily: BODY, fontSize: '0.72rem', color: T.gold, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <span style={{ width: 5, height: 5, borderRadius: '50%', background: T.gold, display: 'inline-block' }} />
+                                            Verified Seller
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div style={{ borderTop: `1px solid ${T.border}`, padding: '14px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(240,237,232,0.4)' }}>

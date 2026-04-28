@@ -13,8 +13,10 @@ const { generalLimiter, authLimiter, bidLimiter } = require('./src/middleware/ra
 const { runAuctionCompletionCron } = require('./src/modules/auctions/auctionCompletion.cron');
 
 // Test Supabase connection & ensure storage buckets
-testConnection();
-ensureStorageBuckets().catch(err => console.error('❌ ensureStorageBuckets failed:', err.message));
+if (process.env.NODE_ENV !== 'test') {
+    testConnection();
+    ensureStorageBuckets().catch(err => console.error('❌ ensureStorageBuckets failed:', err.message));
+}
 
 // Check required tables exist
 const checkTables = async () => {
@@ -41,7 +43,9 @@ const checkTables = async () => {
         console.error('❌ Table check failed:', err.message);
     }
 };
-checkTables();
+if (process.env.NODE_ENV !== 'test') {
+    checkTables();
+}
 
 // Verify SMTP configuration on startup
 const verifySMTP = async () => {
@@ -67,7 +71,9 @@ const verifySMTP = async () => {
         }
     }
 };
-verifySMTP();
+if (process.env.NODE_ENV !== 'test') {
+    verifySMTP();
+}
 
 // Initialize Express app
 const app = express();

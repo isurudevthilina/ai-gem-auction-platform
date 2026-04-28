@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useGetFolders, useCreateFolder, useRenameFolder, useDeleteFolder } from '../hooks/useFolders';
-import { useGetWatchlist, useRemoveFromWatchlist, useMoveToFolder } from '../hooks/useWatchlist';
+import { useGetWatchlist, useRemoveFromWatchlist, useMoveToFolder, useUpdatePriority } from '../hooks/useWatchlist';
 import FolderSidebar from '../components/FolderSidebar';
 import WatchlistGemCard from '../components/WatchlistGemCard';
 import CreateFolderModal from '../components/CreateFolderModal';
@@ -36,6 +36,7 @@ const WatchlistPage = () => {
     const deleteFolder = useDeleteFolder();
     const removeMutation = useRemoveFromWatchlist();
     const moveMutation = useMoveToFolder();
+    const updatePriorityMutation = useUpdatePriority();
 
     const totalCount = (folders || []).find((f) => f.id === 'all')?.gem_count || 0;
 
@@ -98,6 +99,7 @@ const WatchlistPage = () => {
                                         folders={folders || []}
                                         onRemove={(gemId) => removeMutation.mutate(gemId)}
                                         onMove={(itm) => setMoveModal(itm)}
+                                        onUpdatePriority={(data) => updatePriorityMutation.mutate(data)}
                                     />
                                 ))}
                             </motion.div>

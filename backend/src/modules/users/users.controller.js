@@ -19,16 +19,30 @@ const uploadAvatar = catchAsync(async (req, res) => {
     apiResponse(res, 200, profile, 'Avatar updated.');
 });
 
+const requestEmailChangeOTP = catchAsync(async (req, res) => {
+    const result = await service.requestEmailChangeOTP(
+        req.user.id, req.body.new_email, req.body.current_password,
+    );
+    apiResponse(res, 200, result, result.message);
+});
+
 const changeEmail = catchAsync(async (req, res) => {
     const result = await service.changeEmail(
-        req.user.id, req.body.new_email, req.body.current_password,
+        req.user.id, req.body.new_email, req.body.otp,
+    );
+    apiResponse(res, 200, result, result.message);
+});
+
+const requestPasswordChangeOTP = catchAsync(async (req, res) => {
+    const result = await service.requestPasswordChangeOTP(
+        req.user.id, req.body.current_password,
     );
     apiResponse(res, 200, result, result.message);
 });
 
 const changePassword = catchAsync(async (req, res) => {
     const result = await service.changePassword(
-        req.user.id, req.body.current_password, req.body.new_password,
+        req.user.id, req.body.otp, req.body.new_password,
     );
     apiResponse(res, 200, result, result.message);
 });
@@ -91,7 +105,9 @@ module.exports = {
     getProfile,
     updateProfile,
     uploadAvatar,
+    requestEmailChangeOTP,
     changeEmail,
+    requestPasswordChangeOTP,
     changePassword,
     deleteAccount,
     adminGetAllUsers,

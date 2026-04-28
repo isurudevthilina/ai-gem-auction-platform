@@ -10,6 +10,17 @@ const WATCHLIST_SELECT = `
     auction:auctions(id, current_price, end_time, status, bid_count)
 `;
 
+const PRIORITY_WEIGHT = { high: 1, medium: 2, low: 3 };
+
+const sortByPriority = (items) => {
+    return (items || []).sort((a, b) => {
+        const weightA = PRIORITY_WEIGHT[a.priority] || 3;
+        const weightB = PRIORITY_WEIGHT[b.priority] || 3;
+        if (weightA !== weightB) return weightA - weightB;
+        return new Date(b.created_at) - new Date(a.created_at);
+    });
+};
+
 const getFolderById = async (folderId, userId) => {
     const { data, error } = await supabaseAdmin
         .from('watchlist_folders')
@@ -136,7 +147,7 @@ const getWatchlistByFolder = async (userId, folderId) => {
 
     const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw new ApiError(500, error.message);
-    return data;
+    return sortByPriority(data);
 };
 
 const getAll = async (userId) => {
@@ -160,7 +171,7 @@ const getAll = async (userId) => {
 
     const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw new ApiError(500, error.message);
-    return data;
+    return sortByPriority(data);
 };
 
 const addToWatchlist = async (userId, gemId, auctionId, folderId) => {
@@ -230,6 +241,20 @@ const moveToFolder = async (userId, watchlistId, folderId) => {
     const { data, error } = await supabaseAdmin
         .from('watchlist')
         .update({ folder_id: folderId })
+        .eq('id', watchlistId)
+        .eq('user_id', userId)
+        .select()
+        .single();
+    if (error && error.code === 'PGRST116') throw new ApiError(404, 'Watchlist item not found');
+    if (error) throw new ApiError(500, error.message);
+    if (!data) throw new ApiError(404, 'Watchlist item not found');
+    return data;
+};
+
+const updatePriority = async (userId, watchlistId, priority) => {
+    const { data, error } = await supabaseAdmin
+        .from('watchlist')
+        .update({ priority })
         .eq('id', watchlistId)
         .eq('user_id', userId)
         .select()
@@ -310,4 +335,5 @@ module.exports = {
     countByFolder,
     countAll,
     getFolderById,
+    updatePriority,
 };

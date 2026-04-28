@@ -4,6 +4,7 @@ import {
     getCertStats,
     getCertById,
     verifyCertificate,
+    sendAuthorityVerification,
     rejectCertificate,
     deleteCertificate,
 } from '../services/certificatesService';
@@ -39,6 +40,18 @@ export const useVerifyCertificate = () => {
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['admin-certificates'] });
             qc.invalidateQueries({ queryKey: ['cert-stats'] });
+        },
+    });
+};
+
+export const useSendAuthorityVerification = () => {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, payload }) => sendAuthorityVerification(id, payload),
+        onSuccess: (_data, variables) => {
+            qc.invalidateQueries({ queryKey: ['admin-certificates'] });
+            qc.invalidateQueries({ queryKey: ['cert-stats'] });
+            qc.invalidateQueries({ queryKey: ['certificate', variables.id] });
         },
     });
 };

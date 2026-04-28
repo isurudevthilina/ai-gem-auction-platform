@@ -1,4 +1,5 @@
 import CertificateStatusBadge from './CertificateStatusBadge';
+import { MailCheck } from 'lucide-react';
 
 const C = {
     bg: '#F0EDE8', white: '#FFFFFF', sapphire: '#1A4D8C', gold: '#C4892A',
@@ -36,6 +37,18 @@ const CheckSvg = () => (
     </svg>
 );
 
+const AuthorityApproved = () => (
+    <div style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        background: 'rgba(26,77,140,0.07)', borderRadius: 10,
+        padding: '8px 10px', marginBottom: 10,
+        fontFamily: BODY, fontSize: '0.72rem', fontWeight: 700,
+        color: C.sapphire,
+    }}>
+        <MailCheck size={14} /> Approved by Authority
+    </div>
+);
+
 const XSvg = () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -55,7 +68,7 @@ const GemPlaceholder = () => (
     </svg>
 );
 
-const CertificateCard = ({ cert, onVerify, onReject, onViewDetail }) => {
+const CertificateCard = ({ cert, onVerify, onReject, onViewDetail, onSendAuthority }) => {
     const lab = LAB_COLORS[cert.issued_by] || { bg: C.faint, color: C.white };
     const gemImg = cert.gem?.images?.find(u => typeof u === 'string' && !u.startsWith('model:'));
 
@@ -134,25 +147,37 @@ const CertificateCard = ({ cert, onVerify, onReject, onViewDetail }) => {
                 Submitted {relativeTime(cert.created_at)}
             </div>
 
+            {cert.status === 'pending' && cert.authority_status === 'approved' && <AuthorityApproved />}
+
             {/* Action buttons (pending only) */}
             {cert.status === 'pending' && (
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={(e) => { e.stopPropagation(); onVerify(cert); }} style={{
-                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        padding: '9px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
-                        background: '#1D9E75', color: C.bg,
-                        fontFamily: BODY, fontSize: '0.78rem', fontWeight: 700,
+                <div style={{ display: 'grid', gap: 8 }}>
+                    <button onClick={(e) => { e.stopPropagation(); onSendAuthority(cert); }} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        padding: '9px 10px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                        background: C.sapphire, color: C.white,
+                        fontFamily: BODY, fontSize: '0.76rem', fontWeight: 700,
                     }}>
-                        <CheckSvg /> Verify
+                        <MailCheck size={15} /> Send to Authority
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); onReject(cert); }} style={{
-                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        padding: '9px 0', borderRadius: 10, cursor: 'pointer',
-                        background: 'transparent', border: `1px solid ${C.red}`, color: C.red,
-                        fontFamily: BODY, fontSize: '0.78rem', fontWeight: 700,
-                    }}>
-                        <XSvg /> Reject
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={(e) => { e.stopPropagation(); onVerify(cert); }} style={{
+                            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                            padding: '9px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
+                            background: '#1D9E75', color: C.bg,
+                            fontFamily: BODY, fontSize: '0.78rem', fontWeight: 700,
+                        }}>
+                            <CheckSvg /> Verify
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); onReject(cert); }} style={{
+                            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                            padding: '9px 0', borderRadius: 10, cursor: 'pointer',
+                            background: 'transparent', border: `1px solid ${C.red}`, color: C.red,
+                            fontFamily: BODY, fontSize: '0.78rem', fontWeight: 700,
+                        }}>
+                            <XSvg /> Reject
+                        </button>
+                    </div>
                 </div>
             )}
 

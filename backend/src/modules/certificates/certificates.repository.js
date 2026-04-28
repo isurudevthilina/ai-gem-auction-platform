@@ -5,6 +5,8 @@ const CERT_SELECT_WITH_GEM = `
     id, gem_id, seller_id, document_url,
     issued_by, certificate_number, issued_date,
     status, notes, verified_by, verified_at,
+    authority_email, authority_sent_at, authority_sent_by, authority_message_id, authority_notes,
+    authority_status, authority_approved_at,
     created_at, updated_at,
     gem:gems ( id, title, carat_weight, images, color, cut, clarity, origin, treatment, listing_type, status, category:categories ( id, name ) ),
     seller:profiles!seller_id ( id, full_name, email, avatar_url, business_name, phone_number, is_verified ),
@@ -44,14 +46,38 @@ const create = async (record) => {
     return data;
 };
 
-const updateStatus = async (id, { status, notes, verified_by }) => {
+const updateStatus = async (id, { status, notes, verified_by, ...extraFields }) => {
     const updates = {
         status,
         updated_at: new Date().toISOString(),
         verified_by: verified_by || null,
         verified_at: new Date().toISOString(),
+        ...extraFields,
     };
     if (notes !== undefined) updates.notes = notes;
+
+    const { data, error } = await supabaseAdmin
+        .from('certificates')
+        .update(updates)
+        .eq('id', id)
+        .select(CERT_SELECT_WITH_GEM)
+        .single();
+
+    if (error) throw error;
+    return data;
+};
+
+const updateAuthorityAudit = async (id, fields) => {
+    const updates = {
+        authority_email: fields.authority_email,
+        authority_sent_at: fields.authority_sent_at,
+        authority_sent_by: fields.authority_sent_by,
+        authority_message_id: fields.authority_message_id || null,
+        authority_notes: fields.authority_notes || null,
+        authority_status: fields.authority_status,
+        authority_approved_at: fields.authority_approved_at,
+        updated_at: new Date().toISOString(),
+    };
 
     const { data, error } = await supabaseAdmin
         .from('certificates')
@@ -158,4 +184,4 @@ const getSignedDownloadUrl = async (storagePath, expiresIn = 3600) => {
     return data.signedUrl;
 };
 
-module.exports = { findBySeller, findByGem, create, updateStatus, findAll, findById, delete: deleteCert, getCertStats, getUploadUrl, getSignedDownloadUrl };
+module.exports = { findBySeller, findByGem, create, updateStatus, updateAuthorityAudit, findAll, findById, delete: deleteCert, getCertStats, getUploadUrl, getSignedDownloadUrl };

@@ -7,7 +7,7 @@ const GEM_SELECT = `
     x, y, z,
     listing_type, status, buy_now_price, predicted_price,
     created_at, updated_at,
-    seller:profiles!gems_seller_id_fkey ( id, full_name, avatar_url ),
+    seller:profiles!gems_seller_id_fkey ( id, full_name, avatar_url, is_verified ),
     category:categories ( id, name, slug )
 `;
 

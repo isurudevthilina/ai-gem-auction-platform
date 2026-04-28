@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { createElement, useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LogOut, User, LayoutDashboard, Heart, Gavel, GemIcon, ListPlus, ShieldCheck, ShoppingBag, BarChart3 } from 'lucide-react';
+import { LogOut, User, LayoutDashboard, Heart, Gavel, GemIcon, ListPlus, ShieldCheck, ShoppingBag, BarChart3, Star } from 'lucide-react';
 
-const getMenuItems = (role) => {
+const getMenuItems = (role, userId) => {
     const items = [
         { label: 'My Profile', to: '/profile', icon: User },
     ];
@@ -18,6 +18,7 @@ const getMenuItems = (role) => {
     } else if (role === 'seller') {
         items.push(
             { label: 'Seller Dashboard', to: '/seller-dashboard', icon: LayoutDashboard },
+            ...(userId ? [{ label: 'My Ratings', to: `/sellers/${userId}/reviews`, icon: Star }] : []),
             { label: 'My Listings', to: '/seller-dashboard', icon: GemIcon, state: { tab: 'listings' } },
             { label: 'Watchlist', to: '/watchlist', icon: Heart },
             { label: 'List New Gem', to: '/gems/new', icon: ListPlus },
@@ -58,7 +59,7 @@ export default function ProfileAvatar() {
         navigate('/login');
     };
 
-    const menuItems = getMenuItems(user?.role);
+    const menuItems = getMenuItems(user?.role, user?.id);
 
     return (
         <div ref={ref} style={{ position: 'relative' }}>
@@ -169,7 +170,7 @@ export default function ProfileAvatar() {
 
                     {/* Menu Items */}
                     <div style={{ padding: '6px 0' }}>
-                        {menuItems.map(({ label, to, icon: Icon, state }) => (
+                        {menuItems.map(({ label, to, icon, state }) => (
                             <button
                                 key={to + label}
                                 onClick={() => { navigate(to, state ? { state } : undefined); setOpen(false); }}
@@ -192,7 +193,7 @@ export default function ProfileAvatar() {
                                 onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(30,42,80,0.04)'; }}
                                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                             >
-                                <Icon size={15} strokeWidth={1.8} style={{ color: '#6B6B7B', flexShrink: 0 }} />
+                                {createElement(icon, { size: 15, strokeWidth: 1.8, style: { color: '#6B6B7B', flexShrink: 0 } })}
                                 {label}
                             </button>
                         ))}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { placeBid } from '../services/auctionsService';
 import { useCurrency } from '../../../context/CurrencyContext';
+import { getAuctionState } from '../utils/auctionState';
 
 const C = {
     bg:        '#F0EDE8',
@@ -37,7 +38,8 @@ const BidPanel = ({ auction, onBidPlaced, isExpired }) => {
     const currentPrice  = Number(auction?.current_price || 0);
     const increment     = Number(auction?.min_bid_increment || 10);
     const minRequired   = currentPrice + increment;
-    const isActive      = auction?.status === 'active' && !isExpired;
+    const auctionState  = getAuctionState(auction);
+    const isActive      = auctionState === 'live' && !isExpired;
 
     const quickAmounts = [minRequired, minRequired + increment, minRequired + increment * 2];
 
@@ -282,7 +284,7 @@ const BidPanel = ({ auction, onBidPlaced, isExpired }) => {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.faint} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                     </svg>
-                    {isExpired ? 'Auction has ended' : `Auction is ${auction?.status}`}
+                    {auctionState === 'scheduled' ? 'Auction has not started yet' : isExpired ? 'Auction has ended' : `Auction is ${auction?.status}`}
                 </div>
             )}
         </div>

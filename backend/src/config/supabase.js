@@ -56,6 +56,7 @@ const ensureStorageBuckets = async () => {
         { name: 'gem-models', public: true, allowedMimeTypes: ['model/gltf-binary', 'model/gltf+json', 'application/octet-stream'], fileSizeLimit: 52428800 },
         { name: 'certificates', public: false, allowedMimeTypes: ['application/pdf'], fileSizeLimit: 10485760 },
         { name: 'avatars', public: true, allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'], fileSizeLimit: 2097152 },
+        { name: 'review-media', public: true, allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime'], fileSizeLimit: 52428800 },
     ];
 
     for (const bucket of requiredBuckets) {

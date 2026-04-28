@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { MailCheck } from 'lucide-react';
 import CertificateStatusBadge from './CertificateStatusBadge';
 import { getDocumentUrl } from '../services/certificatesService';
 
@@ -52,7 +53,7 @@ const InitialsAvatar = ({ name, url, size = 40 }) => {
     );
 };
 
-const CertificateDetailModal = ({ cert, onClose, onVerify, onReject }) => {
+const CertificateDetailModal = ({ cert, onClose, onVerify, onReject, onSendAuthority }) => {
     const [docUrl, setDocUrl] = useState(null);
 
     useEffect(() => {
@@ -200,6 +201,27 @@ const CertificateDetailModal = ({ cert, onClose, onVerify, onReject }) => {
                         {cert.seller?.phone_number && <LabelValue label="Phone" value={cert.seller.phone_number} />}
                         {cert.seller?.business_name && <LabelValue label="Business" value={cert.seller.business_name} />}
 
+                        {cert.authority_status === 'approved' && (
+                            <>
+                                <div style={{ height: 1, background: C.border, margin: '16px 0' }} />
+                                <h3 style={{ fontFamily: DISPLAY, fontSize: '0.78rem', fontWeight: 700, color: C.faint, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 12px' }}>
+                                    Authority Review
+                                </h3>
+                                <div style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                                    background: 'rgba(26,77,140,0.07)', borderRadius: 10,
+                                    padding: '8px 10px', marginBottom: 10,
+                                    fontFamily: BODY, fontSize: '0.72rem', fontWeight: 700,
+                                    color: C.sapphire,
+                                }}>
+                                    <MailCheck size={14} /> Approved by Authority
+                                </div>
+                                <LabelValue label="Authority Email" value={cert.authority_email} />
+                                <LabelValue label="Authority Approved" value={cert.authority_approved_at ? formatDate(cert.authority_approved_at) : null} />
+                                {cert.authority_notes && <LabelValue label="Authority Notes" value={cert.authority_notes} />}
+                            </>
+                        )}
+
                         {/* Review notes (if verified or rejected) */}
                         {(cert.status === 'verified' || cert.status === 'rejected') && (
                             <>
@@ -230,6 +252,14 @@ const CertificateDetailModal = ({ cert, onClose, onVerify, onReject }) => {
                         display: 'flex', gap: 12, padding: '16px 28px',
                         borderTop: `1px solid ${C.border}`, justifyContent: 'flex-end',
                     }}>
+                        <button onClick={() => onSendAuthority(cert)} style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 8,
+                            padding: '10px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                            background: C.sapphire, color: C.white,
+                            fontFamily: BODY, fontSize: '0.82rem', fontWeight: 700,
+                        }}>
+                            <MailCheck size={16} /> Send to Authority
+                        </button>
                         <button onClick={() => onReject(cert)} style={{
                             padding: '10px 24px', borderRadius: 10, cursor: 'pointer',
                             background: 'transparent', border: `1px solid ${C.red}`, color: C.red,

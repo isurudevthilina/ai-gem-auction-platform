@@ -16,6 +16,11 @@ const rejectCertificateSchema = z.object({
     notes: z.string().min(10).max(500).trim(),
 });
 
+const authorityVerificationSchema = z.object({
+    authority_email: z.string().email().trim().toLowerCase().optional(),
+    notes: z.string().max(500).trim().optional(),
+});
+
 const validate = (schema) => (req, _res, next) => {
     const result = schema.safeParse(req.body);
     if (!result.success) {
@@ -30,5 +35,6 @@ module.exports = {
     createCertificateSchema,
     verifyCertificateSchema,
     rejectCertificateSchema,
+    authorityVerificationSchema,
     validate,
 };

@@ -7,6 +7,8 @@ const controller = require('./users.controller');
 const {
     updateProfileSchema,
     changeEmailSchema,
+    requestEmailChangeOTPSchema,
+    requestPasswordChangeOTPSchema,
     changePasswordSchema,
     deleteAccountSchema,
     adminUpdateUserSchema,
@@ -18,7 +20,9 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 *
 router.get('/me',          authenticate, controller.getProfile);
 router.patch('/me',        authenticate, validate(updateProfileSchema), controller.updateProfile);
 router.patch('/me/avatar', authenticate, upload.single('avatar'), controller.uploadAvatar);
+router.post('/me/email/otp', authenticate, validate(requestEmailChangeOTPSchema), controller.requestEmailChangeOTP);
 router.patch('/me/email',  authenticate, validate(changeEmailSchema), controller.changeEmail);
+router.post('/me/password/otp', authenticate, validate(requestPasswordChangeOTPSchema), controller.requestPasswordChangeOTP);
 router.patch('/me/password', authenticate, validate(changePasswordSchema), controller.changePassword);
 router.delete('/me',       authenticate, validate(deleteAccountSchema), controller.deleteAccount);
 

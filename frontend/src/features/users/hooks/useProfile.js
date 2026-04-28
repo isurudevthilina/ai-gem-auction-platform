@@ -35,6 +35,12 @@ export const useChangeEmail = () => {
     });
 };
 
+export const useRequestEmailChangeOTP = () =>
+    useMutation({ mutationFn: usersService.requestEmailChangeOTP });
+
+export const useRequestPasswordChangeOTP = () =>
+    useMutation({ mutationFn: usersService.requestPasswordChangeOTP });
+
 export const useChangePassword = () =>
     useMutation({ mutationFn: usersService.changePassword });
 

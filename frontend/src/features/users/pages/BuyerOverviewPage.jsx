@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../api/client';
 import { useCurrency } from '../../../context/CurrencyContext';
+import { getAuctionState, isAuctionLive } from '../../auctions/utils/auctionState';
 
 /* ─── Design tokens ─── */
 const C = {
@@ -59,10 +60,11 @@ const BidRow = ({ bid }) => {
 
     const getStatus = () => {
         if (!a) return { label: 'Unknown', color: C.faint };
-        if (a.status === 'completed') {
+        const state = getAuctionState(a);
+        if (state === 'completed' || state === 'ended' || state === 'reserve_not_met') {
             return bid.is_winning ? { label: 'Won', color: C.green } : { label: 'Lost', color: C.red };
         }
-        if (a.status === 'active') {
+        if (state === 'live') {
             return bid.is_winning ? { label: 'Winning', color: C.green } : { label: 'Outbid', color: C.red };
         }
         return { label: a.status, color: C.faint };
@@ -163,7 +165,7 @@ export default function BuyerOverviewPage() {
 
             const activeBids = bids.filter(b => {
                 const a = b.auction || b.auctions;
-                return a?.status === 'active' && b.is_winning;
+                return isAuctionLive(a) && b.is_winning;
             }).length;
             const auctionsWon = bids.filter(b => {
                 const a = b.auction || b.auctions;

@@ -5,6 +5,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { getMyGems } from '../../gems/services/gemsService';
 import { getAuctions, getBids } from '../../auctions/services/auctionsService';
 import { useCurrency } from '../../../context/CurrencyContext';
+import { isAuctionLive } from '../../auctions/utils/auctionState';
 
 /* ─── Design tokens ─── */
 const C = {
@@ -39,7 +40,7 @@ const SellerStatus = ({ profile }) => {
                 setAuctions(a);
 
                 // Fetch recent bids from active auctions
-                const active = a.filter(au => au.status === 'active').slice(0, 5);
+                const active = a.filter(au => isAuctionLive(au)).slice(0, 5);
                 if (active.length > 0) {
                     const bidResults = await Promise.all(
                         active.map(au => getBids(au.id, 1, 5).catch(() => ({ data: [] })))
@@ -59,7 +60,7 @@ const SellerStatus = ({ profile }) => {
         if (user?.id) load();
     }, [user?.id]);
 
-    const activeAuctions = auctions.filter(a => a.status === 'active');
+    const activeAuctions = auctions.filter(a => isAuctionLive(a));
     const completedWithWinner = auctions.filter(a => a.status === 'completed' && a.winner_id);
     const revenue = completedWithWinner.reduce((sum, a) => sum + Number(a.current_price || 0), 0);
     const soldGems = gems.filter(g => g.status === 'sold');

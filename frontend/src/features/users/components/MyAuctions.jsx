@@ -5,6 +5,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { getAuctions, deleteAuction } from '../../auctions/services/auctionsService';
 import AuctionBidHistory from './AuctionBidHistory';
 import { useCurrency } from '../../../context/CurrencyContext';
+import { getDashboardAuctionClass } from '../../auctions/utils/auctionState';
 
 /* ─── Design tokens ─── */
 const C = {
@@ -41,18 +42,6 @@ const GemPlaceholder = () => (
     </svg>
 );
 
-const classifyAuction = (a) => {
-    const now = new Date();
-    if (a.status === 'completed') return 'completed';
-    if (a.status === 'cancelled') return 'cancelled';
-    if (a.status === 'active') {
-        if (new Date(a.start_time) > now) return 'scheduled';
-        if (new Date(a.end_time) > now) return 'active';
-        return 'completed';
-    }
-    return a.status;
-};
-
 const MyAuctions = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -79,7 +68,7 @@ const MyAuctions = () => {
 
     useEffect(() => { if (user?.id) fetchAuctions(); }, [user?.id]);
 
-    const classified = auctions.map(a => ({ ...a, _class: classifyAuction(a) }));
+    const classified = auctions.map(a => ({ ...a, _class: getDashboardAuctionClass(a) }));
     const filtered = tab === 'all' ? classified : classified.filter(a => a._class === tab);
     const countFor = (key) => key === 'all' ? classified.length : classified.filter(a => a._class === key).length;
 
@@ -186,6 +175,9 @@ const MyAuctions = () => {
                         const sts = STATUS_STYLES[cls] || STATUS_STYLES.active;
                         const coverUrl = auction.gem?.images?.find(u => !u.startsWith('model:'));
                         const isExpanded = expandedId === auction.id;
+                        const canDeleteCancelled = cls === 'cancelled' && (auction.bid_count || 0) === 0;
+                        const canCancelOrDelete = cls === 'active' || cls === 'scheduled' || canDeleteCancelled;
+                        const deleteLabel = cls === 'scheduled' || canDeleteCancelled ? 'Delete' : 'Cancel';
 
                         return (
                             <div key={auction.id}>
@@ -250,8 +242,8 @@ const MyAuctions = () => {
                                             <Eye size={14} />
                                         </button>
 
-                                        {(cls === 'active' || cls === 'scheduled') && (
-                                            <button onClick={() => setConfirmCancelId(auction.id)} title={cls === 'scheduled' ? 'Delete' : 'Cancel'} style={{
+                                        {canCancelOrDelete && (
+                                            <button onClick={() => setConfirmCancelId(auction.id)} title={deleteLabel} style={{
                                                 width: 30, height: 30, borderRadius: 6,
                                                 border: `1px solid ${C.border}`, background: C.white,
                                                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -289,8 +281,8 @@ const MyAuctions = () => {
                                             padding: 16, zIndex: 20, width: 240,
                                         }}>
                                             <div style={{ fontFamily: BODY, fontSize: '0.82rem', color: C.text, fontWeight: 600, marginBottom: 12 }}>
-                                                {cls === 'scheduled'
-                                                    ? 'Delete this upcoming auction? The gem will return to your listings.'
+                                                {cls === 'scheduled' || canDeleteCancelled
+                                                    ? 'Delete this auction? The gem will return to your listings.'
                                                     : 'Cancel this auction? This cannot be undone.'}
                                             </div>
                                             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -304,7 +296,7 @@ const MyAuctions = () => {
                                                     border: 'none', background: C.red, color: '#fff',
                                                     fontFamily: BODY, fontSize: '0.78rem', fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer',
                                                     opacity: busy ? 0.7 : 1,
-                                                }}>{cls === 'scheduled' ? 'Delete Auction' : 'Cancel Auction'}</button>
+                                                }}>{cls === 'scheduled' || canDeleteCancelled ? 'Delete Auction' : 'Cancel Auction'}</button>
                                             </div>
                                         </div>
                                     )}

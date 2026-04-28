@@ -3,7 +3,7 @@ const { supabaseAdmin } = require('../../config/supabase');
 const AUCTION_SELECT_LIST = `
     id, starting_price, current_price, min_bid_increment,
     start_time, end_time, status, bid_count, created_at,
-    seller:profiles!auctions_seller_id_fkey ( id, full_name, avatar_url ),
+    seller:profiles!auctions_seller_id_fkey ( id, full_name, avatar_url, is_verified ),
     gem:gems (
         id, title, carat_weight, cut, clarity, color,
         images, buy_now_price, predicted_price,
@@ -16,7 +16,7 @@ const AUCTION_SELECT_FULL = `
     id, starting_price, current_price, reserve_price,
     min_bid_increment, start_time, end_time, status,
     bid_count, created_at, winner_id,
-    seller:profiles!auctions_seller_id_fkey ( id, full_name, avatar_url ),
+    seller:profiles!auctions_seller_id_fkey ( id, full_name, avatar_url, is_verified ),
     winner:profiles!auctions_winner_id_fkey ( id, full_name ),
     gem:gems (
         id, title, description, carat_weight, cut, clarity, color,
@@ -27,50 +27,90 @@ const AUCTION_SELECT_FULL = `
     )
 `;
 
-const findAll = async ({ status, upcoming, seller_id, category_id, search, page = 1, limit = 12, sort = 'end_time', order = 'asc' }) => {
+const toNumber = (value) => {
+    if (value === undefined || value === null || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
+const resolveGemIds = async ({ category_id, search }) => {
+    if (!category_id && !search) return null;
+
+    let query = supabaseAdmin
+        .from('gems')
+        .select('id');
+
+    if (category_id) {
+        query = query.eq('category_id', category_id);
+    }
+
+    if (search) {
+        const safeSearch = String(search).replace(/[%_]/g, '\\$&');
+        query = query.ilike('title', `%${safeSearch}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return (data || []).map((gem) => gem.id);
+};
+
+const findAll = async ({
+    status,
+    upcoming,
+    seller_id,
+    category_id,
+    search,
+    min_price,
+    max_price,
+    page = 1,
+    limit = 12,
+    sort = 'end_time',
+    order = 'asc',
+}) => {
     const from = (parseInt(page) - 1) * parseInt(limit);
     const to   = from + parseInt(limit) - 1;
+    const now = new Date().toISOString();
+    const gemIds = await resolveGemIds({ category_id, search });
 
     let query = supabaseAdmin
         .from('auctions')
-        .select(AUCTION_SELECT_LIST, { count: 'exact' })
-        .range(from, to)
-        .order(sort, { ascending: order === 'asc' });
-
-    const now = new Date().toISOString();
+        .select(AUCTION_SELECT_LIST, { count: 'exact' });
 
     if (upcoming === 'true') {
         query = query
             .eq('status', 'active')
             .gt('start_time', now);
     } else if (status === 'active') {
-        // "Live" = status is active AND end_time hasn't passed yet
+        // "Live" = status is active and the current time sits inside the auction window.
         query = query
             .eq('status', 'active')
+            .lte('start_time', now)
             .gt('end_time', now);
     } else if (status === 'completed') {
         // "Ended" = explicitly completed OR active but past end_time (cron hasn't run yet)
-        query = query.or(`status.eq.completed,and(status.eq.active,end_time.lt.${now})`);
+        query = query.or(`status.in.(completed,reserve_not_met),and(status.eq.active,end_time.lte.${now})`);
     } else if (status && status !== 'all') {
         query = query.eq('status', status);
     }
 
     if (seller_id) query = query.eq('seller_id', seller_id);
+    if (gemIds) query = gemIds.length ? query.in('gem_id', gemIds) : query.in('gem_id', ['00000000-0000-0000-0000-000000000000']);
+
+    const minPrice = toNumber(min_price);
+    const maxPrice = toNumber(max_price);
+    if (minPrice !== null) query = query.gte('current_price', minPrice);
+    if (maxPrice !== null) query = query.lte('current_price', maxPrice);
+
+    query = query
+        .order(sort, { ascending: order === 'asc' })
+        .range(from, to);
 
     const { data, error, count } = await query;
     if (error) throw error;
 
-    let filtered = data || [];
-    if (search) {
-        const q = search.toLowerCase();
-        filtered = filtered.filter(a => a.gem?.title?.toLowerCase().includes(q));
-    }
-    if (category_id) {
-        filtered = filtered.filter(a => a.gem?.category?.id === category_id);
-    }
-
     return {
-        data: filtered,
+        data: data || [],
         count,
         pagination: {
             total: count,

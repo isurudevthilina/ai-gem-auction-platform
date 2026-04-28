@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createAuction } from '../services/auctionsService';
+import { localDateTimeWithOffset } from '../utils/auctionState';
 
 const C = {
     bg:      '#0a0d14',
@@ -36,12 +37,6 @@ const labelStyle = {
     display:      'block',
 };
 
-// Helper: local datetime string for input default
-const localISOString = (offsetHours = 0) => {
-    const d = new Date(Date.now() + offsetHours * 3_600_000);
-    return d.toISOString().slice(0, 16);
-};
-
 /**
  * CreateAuctionModal
  * Props:
@@ -54,8 +49,8 @@ const CreateAuctionModal = ({ sellerGems = [], onClose, onCreated, preSelectedGe
         gem_id:            preSelectedGemId,
         starting_price:    '',
         min_bid_increment: '10',
-        start_time:        localISOString(0),
-        end_time:          localISOString(24),
+        start_time:        localDateTimeWithOffset(0),
+        end_time:          localDateTimeWithOffset(24),
     });
     const [loading, setLoading] = useState(false);
     const [error,   setError]   = useState(null);

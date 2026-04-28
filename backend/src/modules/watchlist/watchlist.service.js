@@ -72,6 +72,10 @@ const checkWatchlist = async (userId, gemId) => {
     return repository.isInWatchlist(userId, gemId);
 };
 
+const updatePriority = async (userId, watchlistId, priority) => {
+    return repository.updatePriority(userId, watchlistId, priority);
+};
+
 module.exports = {
     getFolders,
     createFolder,
@@ -83,4 +87,5 @@ module.exports = {
     removeOlderThan,
     moveToFolder,
     checkWatchlist,
+    updatePriority,
 };

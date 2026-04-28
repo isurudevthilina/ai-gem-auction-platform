@@ -16,11 +16,20 @@ const updateProfileSchema = z.object({
 
 const changeEmailSchema = z.object({
     new_email:        z.string().email().toLowerCase().trim(),
+    otp:              z.string().length(6, 'OTP must be 6 digits.').regex(/^\d{6}$/, 'OTP must contain only numbers.'),
+});
+
+const requestEmailChangeOTPSchema = z.object({
+    new_email:        z.string().email().toLowerCase().trim(),
     current_password: z.string().min(1, 'Password is required'),
 });
 
-const changePasswordSchema = z.object({
+const requestPasswordChangeOTPSchema = z.object({
     current_password: z.string().min(1, 'Current password is required'),
+});
+
+const changePasswordSchema = z.object({
+    otp:              z.string().length(6, 'OTP must be 6 digits.').regex(/^\d{6}$/, 'OTP must contain only numbers.'),
     new_password:     z.string().min(8, 'Must be at least 8 characters')
                         .regex(passwordRegex, 'Must include uppercase, lowercase, number, and special character'),
     confirm_password: z.string().min(1, 'Please confirm your password'),
@@ -60,6 +69,8 @@ const adminSearchSchema = z.object({
 module.exports = {
     updateProfileSchema,
     changeEmailSchema,
+    requestEmailChangeOTPSchema,
+    requestPasswordChangeOTPSchema,
     changePasswordSchema,
     deleteAccountSchema,
     adminUpdateUserSchema,

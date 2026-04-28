@@ -17,12 +17,12 @@ const createAuction = async (validated, sellerId) => {
     if (gem.seller_id !== sellerId) return { error: 'forbidden' };
     if (gem.status === 'sold') return { error: 'gem_sold' };
 
-    // No duplicate active auction for this gem
+    // No duplicate non-terminal auction for this gem
     const { data: existing } = await supabaseAdmin
         .from('auctions')
         .select('id')
         .eq('gem_id', validated.gem_id)
-        .eq('status', 'active')
+        .in('status', ['scheduled', 'active'])
         .maybeSingle();
 
     if (existing) return { error: 'duplicate', existing_id: existing.id };
@@ -43,8 +43,8 @@ const createAuction = async (validated, sellerId) => {
 
     const auction = await repo.create(record);
 
-    // Mark gem as listed
-    await supabaseAdmin.from('gems').update({ status: 'listed' }).eq('id', validated.gem_id);
+    // Mark gem as in auction so normal listing and auction surfaces stay in sync.
+    await supabaseAdmin.from('gems').update({ status: 'in_auction' }).eq('id', validated.gem_id);
 
     return { data: auction };
 };
@@ -107,9 +107,9 @@ const updateAuction = async (id, validated, requestUser) => {
 
     const updated = await repo.update(id, updates);
 
-    // If cancelled, reset gem to draft
+    // If cancelled, return the gem to normal listed inventory.
     if (updates.status === 'cancelled') {
-        await supabaseAdmin.from('gems').update({ status: 'draft' }).eq('id', auction.gem_id);
+        await supabaseAdmin.from('gems').update({ status: 'listed' }).eq('id', auction.gem_id).neq('status', 'sold');
     }
 
     return { data: updated };
@@ -121,15 +121,22 @@ const cancelAuction = async (id, requestUser) => {
     if (auction.seller_id !== requestUser.id && requestUser.role !== 'admin') {
         return { error: 'forbidden' };
     }
-    if (auction.status !== 'active') return { error: 'not_active' };
+    const deletableStatuses = new Set(['active', 'scheduled', 'cancelled']);
+    if (!deletableStatuses.has(auction.status)) return { error: 'not_active' };
     if (auction.bid_count > 0 && requestUser.role !== 'admin') {
         return { error: 'has_bids' };
     }
 
-    await supabaseAdmin.from('auctions').update({ status: 'cancelled' }).eq('id', id);
-    await supabaseAdmin.from('gems').update({ status: 'draft' }).eq('id', auction.gem_id);
+    if ((auction.bid_count || 0) === 0) {
+        await repo.remove(id);
+        await supabaseAdmin.from('gems').update({ status: 'listed' }).eq('id', auction.gem_id).neq('status', 'sold');
+        return { success: true, hard_deleted: true };
+    }
 
-    return { success: true };
+    await supabaseAdmin.from('auctions').update({ status: 'cancelled' }).eq('id', id);
+    await supabaseAdmin.from('gems').update({ status: 'listed' }).eq('id', auction.gem_id).neq('status', 'sold');
+
+    return { success: true, hard_deleted: false };
 };
 
 const placeBid = async (auctionId, bidderId, amount) => {

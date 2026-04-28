@@ -54,5 +54,11 @@ export const moveToFolder = (id, folderId) =>
         body: JSON.stringify({ folder_id: folderId }),
     });
 
+export const updatePriority = (id, priority) =>
+    apiFetch(`/api/watchlist/${id}/priority`, {
+        method: 'PATCH',
+        body: JSON.stringify({ priority }),
+    });
+
 export const checkWatchlist = (gemId) =>
     apiFetch(`/api/watchlist/check/${gemId}`);

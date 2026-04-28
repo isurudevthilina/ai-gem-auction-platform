@@ -4,6 +4,7 @@ import SellerRatingBadge from '../../reviews/components/SellerRatingBadge';
 import { useCurrency } from '../../../context/CurrencyContext';
 import { formatLKR } from '../../../shared/utils/currency';
 import AddToWatchlistButton from '../../watchlist/components/AddToWatchlistButton';
+import { getAuctionState, isAuctionOpen } from '../../auctions/utils/auctionState';
 
 const C = {
     parchment: '#F0EDE8',
@@ -91,13 +92,14 @@ const GemCard = ({ gem, onClick }) => {
     const isUnheated = gem.treatment === 'None' || gem.treatment == null;
 
     const auctionsArr = gem.auctions ? (Array.isArray(gem.auctions) ? gem.auctions : [gem.auctions]) : [];
-    const activeAuction = auctionsArr.find(a => a.status === 'active');
+    const activeAuction = auctionsArr.find(a => isAuctionOpen(a));
     const certsArr = gem.certificates ? (Array.isArray(gem.certificates) ? gem.certificates : [gem.certificates]) : [];
     const certVerified = certsArr.some(c => c.status === 'verified');
     const certBody = certsArr.find(c => c.status === 'verified')?.certification_body;
     const has3D = (gem.images || []).some(u => u.startsWith('model:'));
     const bidCount = activeAuction?.bid_count || 0;
     const isAuction = !!activeAuction;
+    const auctionBadgeLabel = getAuctionState(activeAuction) === 'scheduled' ? 'Upcoming Auction' : 'Live Auction';
     const isDirectSell = !!gem.buy_now_price && !isAuction;
 
     const handleClick = () => onClick ? onClick() : navigate(`/gem/${gem.id}`);
@@ -168,7 +170,7 @@ const GemCard = ({ gem, onClick }) => {
                             padding: '3px 8px', borderRadius: 20,
                             background: C.navy, color: '#fff',
                             fontFamily: BRAND, fontSize: 9, letterSpacing: '0.04em', textTransform: 'uppercase',
-                        }}>Live Auction</span>
+                        }}>{auctionBadgeLabel}</span>
                     )}
                     {isDirectSell && !isAuction && (
                         <span style={{
@@ -313,7 +315,7 @@ export const GemCardRow = ({ gem, onClick }) => {
     const price = gem.buy_now_price || gem.predicted_price;
     const isUnheated = gem.treatment === 'None' || gem.treatment == null;
     const auctionsArr = gem.auctions ? (Array.isArray(gem.auctions) ? gem.auctions : [gem.auctions]) : [];
-    const activeAuction = auctionsArr.find(a => a.status === 'active');
+    const activeAuction = auctionsArr.find(a => isAuctionOpen(a));
     const certsArr = gem.certificates ? (Array.isArray(gem.certificates) ? gem.certificates : [gem.certificates]) : [];
     const certVerified = certsArr.some(c => c.status === 'verified');
     const certBody = certsArr.find(c => c.status === 'verified')?.certification_body;

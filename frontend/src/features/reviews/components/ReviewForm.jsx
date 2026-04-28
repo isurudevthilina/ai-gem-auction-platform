@@ -5,7 +5,7 @@ import { z } from 'zod';
 import StarRating from './StarRating';
 import { useCreateReview, useUpdateReview } from '../hooks/useReviews';
 import { useCurrency } from '../../../context/CurrencyContext';
-import { uploadReviewMedia } from '../services/reviewsService';
+import { uploadReviewMedia, validateReviewMediaFile } from '../services/reviewsService';
 import { analyzeReviewTextToxicity, detectImmediateToxicWord } from '../services/toxicityClient';
 
 const C = {
@@ -176,18 +176,27 @@ const ReviewForm = ({
 
     const accepted = [];
     for (const file of picked.slice(0, left)) {
-      const isImage = file.type.startsWith('image/');
-      const isVideo = file.type.startsWith('video/');
-      if (!isImage && !isVideo) continue;
+      let media;
+      try {
+        media = validateReviewMediaFile(file);
+      } catch (err) {
+        setMediaError(err.message);
+        continue;
+      }
 
-      const sizeLimit = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
-      if (file.size > sizeLimit) continue;
+      const sizeLimit = media.mediaType === 'video' ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+      if (file.size > sizeLimit) {
+        setMediaError(media.mediaType === 'video'
+          ? 'Videos must be 50MB or smaller.'
+          : 'Images must be 10MB or smaller.');
+        continue;
+      }
 
       accepted.push(file);
     }
 
     if (accepted.length === 0) {
-      setMediaError('Only images (<=10MB) or videos (<=50MB) are allowed.');
+      setMediaError((message) => message || 'Only images (<=10MB) or videos (<=50MB) are allowed.');
       event.target.value = '';
       return;
     }

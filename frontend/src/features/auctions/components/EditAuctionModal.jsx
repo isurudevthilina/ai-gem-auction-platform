@@ -4,6 +4,7 @@
  */
 import { useState } from 'react';
 import { updateAuction } from '../services/auctionsService';
+import { toLocalDateTimeInputValue } from '../utils/auctionState';
 
 const C = {
     bg: '#F0EDE8', white: '#FFFFFF', sapphire: '#1A4D8C', gold: '#C4892A',
@@ -27,15 +28,7 @@ const labelStyle = {
 };
 
 const EditAuctionModal = ({ auction, onClose, onUpdated }) => {
-    const toLocal = (iso) => {
-        if (!iso) return '';
-        const d = new Date(iso);
-        const offset = d.getTimezoneOffset();
-        const local = new Date(d.getTime() - offset * 60000);
-        return local.toISOString().slice(0, 16);
-    };
-
-    const [endTime, setEndTime] = useState(toLocal(auction.end_time));
+    const [endTime, setEndTime] = useState(toLocalDateTimeInputValue(auction.end_time));
     const [minIncrement, setMinIncrement] = useState(auction.min_bid_increment ?? '');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -94,7 +87,7 @@ const EditAuctionModal = ({ auction, onClose, onUpdated }) => {
                         type="datetime-local"
                         value={endTime}
                         onChange={e => setEndTime(e.target.value)}
-                        min={new Date().toISOString().slice(0, 16)}
+                        min={toLocalDateTimeInputValue()}
                         style={inputStyle}
                     />
                 </div>

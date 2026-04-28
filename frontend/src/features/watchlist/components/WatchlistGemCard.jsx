@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCurrency } from '../../../context/CurrencyContext';
 
@@ -59,7 +59,106 @@ const getCountdownColor = (diff) => {
     return C.red;
 };
 
-const WatchlistGemCard = ({ item, folders, onRemove, onMove }) => {
+const PRIORITY_STYLES = {
+    high: { bg: C.red, color: '#fff', label: 'High' },
+    medium: { bg: C.gold, color: '#fff', label: 'Medium' },
+    low: { bg: 'rgba(255,255,255,0.85)', color: C.muted, label: 'Low' },
+};
+
+const PriorityBadge = ({ priority, onChange }) => {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+    const style = PRIORITY_STYLES[priority] || PRIORITY_STYLES.low;
+
+    useEffect(() => {
+        if (!open) return;
+        const handler = (e) => {
+            if (ref.current && !ref.current.contains(e.target)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [open]);
+
+    const handleSelect = (val) => {
+        if (val !== priority && onChange) {
+            onChange(val);
+        }
+        setOpen(false);
+    };
+
+    return (
+        <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+            <button
+                onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+                style={{
+                    background: style.bg,
+                    color: style.color,
+                    border: priority === 'low' ? `0.5px solid ${C.border}` : 'none',
+                    borderRadius: 6,
+                    padding: '3px 8px',
+                    fontFamily: BODY,
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    lineHeight: 1,
+                }}
+            >
+                {style.label}
+            </button>
+
+            {open && (
+                <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: 4,
+                    background: C.white,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 8,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.10)',
+                    zIndex: 50,
+                    minWidth: 90,
+                    padding: '4px 0',
+                }}>
+                    {Object.entries(PRIORITY_STYLES).map(([key, s]) => (
+                        <div
+                            key={key}
+                            onClick={(e) => { e.stopPropagation(); handleSelect(key); }}
+                            style={{
+                                padding: '6px 10px',
+                                cursor: 'pointer',
+                                fontFamily: BODY,
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                color: key === priority ? C.sapphire : C.text,
+                                background: key === priority ? 'rgba(26,77,140,0.06)' : 'transparent',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                            }}
+                            onMouseEnter={(e) => { if (key !== priority) e.currentTarget.style.background = C.bg; }}
+                            onMouseLeave={(e) => { if (key !== priority) e.currentTarget.style.background = 'transparent'; }}
+                        >
+                            <span style={{
+                                width: 8, height: 8, borderRadius: '50%',
+                                background: s.bg,
+                                border: key === 'low' ? `0.5px solid ${C.border}` : 'none',
+                                display: 'inline-block',
+                            }} />
+                            {s.label}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const WatchlistGemCard = ({ item, folders, onRemove, onMove, onUpdatePriority }) => {
     const [hover, setHover] = useState(false);
     const navigate = useNavigate();
     const { formatPrice } = useCurrency();
@@ -99,7 +198,7 @@ const WatchlistGemCard = ({ item, folders, onRemove, onMove }) => {
                 )}
 
                 {/* Badges top-left */}
-                <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', gap: 6 }}>
+                <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                     {has3D && (
                         <span style={{
                             background: C.sapphire, color: '#fff', fontSize: '0.68rem', fontWeight: 700,
@@ -112,6 +211,12 @@ const WatchlistGemCard = ({ item, folders, onRemove, onMove }) => {
                             fontSize: '0.68rem', fontWeight: 700, padding: '3px 8px', borderRadius: 6,
                             fontFamily: BODY,
                         }}>{countdown.text}</span>
+                    )}
+                    {onUpdatePriority && (
+                        <PriorityBadge
+                            priority={item.priority || 'low'}
+                            onChange={(p) => onUpdatePriority({ id: item.id, priority: p })}
+                        />
                     )}
                 </div>
 

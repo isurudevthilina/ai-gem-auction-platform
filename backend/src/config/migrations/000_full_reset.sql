@@ -553,6 +553,8 @@ CREATE TABLE public.watchlist (
     gem_id     UUID REFERENCES public.gems(id) ON DELETE CASCADE,
     auction_id UUID REFERENCES public.auctions(id) ON DELETE CASCADE,
     folder_id  UUID REFERENCES public.watchlist_folders(id) ON DELETE SET NULL,
+    priority   TEXT NOT NULL DEFAULT 'low'
+                 CHECK (priority IN ('high', 'medium', 'low')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
 
     CONSTRAINT must_have_gem_or_auction CHECK (gem_id IS NOT NULL OR auction_id IS NOT NULL),
@@ -590,6 +592,14 @@ CREATE TABLE public.certificates (
     verified_by        UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     verified_at        TIMESTAMPTZ,
     notes              TEXT,
+    authority_email    TEXT,
+    authority_sent_at  TIMESTAMPTZ,
+    authority_sent_by  UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    authority_message_id TEXT,
+    authority_notes    TEXT,
+    authority_status   TEXT NOT NULL DEFAULT 'not_requested'
+                         CHECK (authority_status IN ('not_requested', 'approved')),
+    authority_approved_at TIMESTAMPTZ,
     created_at         TIMESTAMPTZ DEFAULT NOW(),
     updated_at         TIMESTAMPTZ DEFAULT NOW()
 );

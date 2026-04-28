@@ -184,7 +184,23 @@ const createAndSendVerification = async (email) => {
 };
 
 const registerUser = async (data) => {
-    const { full_name, email, password, role, phone_number, district, province, nic_number, business_name, business_registration_number, business_address } = data;
+    const {
+        full_name,
+        email,
+        password,
+        role,
+        phone_number,
+        district,
+        province,
+        city,
+        address_line1,
+        address_line2,
+        postal_code,
+        nic_number,
+        business_name,
+        business_registration_number,
+        business_address,
+    } = data;
 
     // Check if email already exists in profiles
     const { data: existing } = await supabaseAdmin
@@ -222,6 +238,10 @@ const registerUser = async (data) => {
         phone_number: phone_number || null,
         district: district || null,
         province: province || null,
+        city: city || null,
+        address_line1: address_line1 || null,
+        address_line2: address_line2 || null,
+        postal_code: postal_code || null,
         email_verified: false,
     };
 

@@ -45,6 +45,16 @@ export const useMoveToFolder = () => {
     });
 };
 
+export const useUpdatePriority = () => {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, priority }) => watchlistService.updatePriority(id, priority),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['watchlist'] });
+        },
+    });
+};
+
 export const useCheckWatchlist = (gemId) => {
     const { isAuthenticated } = useAuth();
     return useQuery({

@@ -30,6 +30,11 @@ const verifyCertificate = catchAsync(async (req, res) => {
     apiResponse(res, 200, result.data, 'Certificate verified.');
 });
 
+const sendAuthorityVerification = catchAsync(async (req, res) => {
+    const result = await service.sendAuthorityVerification(req.params.id, req.user, req.validated || {});
+    apiResponse(res, 200, result.data, 'Authority email sent. Certificate is awaiting admin verification.');
+});
+
 const rejectCertificate = catchAsync(async (req, res) => {
     const result = await service.rejectCertificate(req.params.id, req.user, req.validated.notes);
     apiResponse(res, 200, result.data, 'Certificate rejected.');
@@ -74,6 +79,7 @@ module.exports = {
     uploadCertificate,
     getGemCertificates,
     verifyCertificate,
+    sendAuthorityVerification,
     rejectCertificate,
     getAllCertificates,
     getCertificateById,
