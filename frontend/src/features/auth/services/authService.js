@@ -34,6 +34,26 @@ const authService = {
         return data;
     },
 
+    async verifyEmail(email, otp) {
+        const { data } = await api.post('/v1/auth/verify-email', { email, otp });
+        return data;
+    },
+
+    async forgotPassword(email) {
+        const { data } = await api.post('/v1/auth/forgot-password', { email });
+        return data;
+    },
+
+    async verifyOTP(email, otp) {
+        const { data } = await api.post('/v1/auth/verify-otp', { email, otp });
+        return data;
+    },
+
+    async resetPassword(email, otp, new_password) {
+        const { data } = await api.post('/v1/auth/reset-password', { email, otp, new_password });
+        return data;
+    },
+
     getToken() {
         return localStorage.getItem(TOKEN_KEY);
     },

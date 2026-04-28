@@ -5,7 +5,7 @@ const AUCTION_SELECT_LIST = `
     start_time, end_time, status, bid_count, created_at,
     seller:profiles!auctions_seller_id_fkey ( id, full_name, avatar_url ),
     gem:gems (
-        id, title, carat_weight, cut, clarity, color, origin,
+        id, title, carat_weight, cut, clarity, color,
         images, buy_now_price, predicted_price,
         category:categories ( id, name, slug ),
         certificates:certificates!certificates_gem_id_fkey ( id, status, issued_by )
@@ -20,7 +20,7 @@ const AUCTION_SELECT_FULL = `
     winner:profiles!auctions_winner_id_fkey ( id, full_name ),
     gem:gems (
         id, title, description, carat_weight, cut, clarity, color,
-        origin, treatment, certification, images,
+        treatment, certification_body, certification, images,
         listing_type, buy_now_price, predicted_price,
         category:categories ( id, name, slug ),
         certificates:certificates!certificates_gem_id_fkey ( id, status, issued_by )

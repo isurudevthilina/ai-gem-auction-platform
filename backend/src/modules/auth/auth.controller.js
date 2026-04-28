@@ -36,4 +36,24 @@ const resendVerification = catchAsync(async (req, res) => {
     apiResponse(res, 200, null, result.message);
 });
 
-module.exports = { register, login, logout, me, refresh, resendVerification };
+const verifyEmail = catchAsync(async (req, res) => {
+    const result = await authService.verifyEmailOTP(req.body);
+    apiResponse(res, 200, null, result.message);
+});
+
+const forgotPassword = catchAsync(async (req, res) => {
+    const result = await authService.sendPasswordResetOTP(req.body.email);
+    apiResponse(res, 200, null, result.message);
+});
+
+const verifyOTP = catchAsync(async (req, res) => {
+    const result = await authService.verifyPasswordResetOTP(req.body);
+    apiResponse(res, 200, result, result.message);
+});
+
+const resetPassword = catchAsync(async (req, res) => {
+    const result = await authService.resetPasswordWithOTP(req.body);
+    apiResponse(res, 200, null, result.message);
+});
+
+module.exports = { register, login, logout, me, refresh, resendVerification, verifyEmail, forgotPassword, verifyOTP, resetPassword };

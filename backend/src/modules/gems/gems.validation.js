@@ -24,10 +24,8 @@ const TREATMENTS = [
     'Be Heated', 'Fracture Filled', 'Heated', 'Irradiated', 'Untreated',
 ];
 
-const ORIGINS = [
-    'Sri Lanka (Ceylon)', 'Burma (Myanmar)', 'Madagascar', 'Thailand',
-    'Colombia', 'Brazil', 'Zambia', 'Tanzania', 'India', 'Afghanistan',
-    'Australia', 'Other',
+const CERTIFICATION_BODIES = [
+    'GIA', 'AGS', 'IGI', 'GRS', 'GIT', 'GGTL', 'Gübelin', 'Other',
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,10 +66,6 @@ const createGemSchema = z.object({
         errorMap: () => ({ message: `Treatment must be one of: ${TREATMENTS.join(', ')}` }),
     }).optional(),
 
-    origin: z.enum(ORIGINS, {
-        errorMap: () => ({ message: `Origin must be one of: ${ORIGINS.join(', ')}` }),
-    }).optional(),
-
     description: z
         .string()
         .trim()
@@ -79,10 +73,14 @@ const createGemSchema = z.object({
         .optional()
         .default(''),
 
+    certification_body: z.enum(CERTIFICATION_BODIES, {
+        errorMap: () => ({ message: `Certification body must be one of: ${CERTIFICATION_BODIES.join(', ')}` }),
+    }).optional(),
+
     certification: z
         .string()
         .trim()
-        .max(60, 'Certification must be 60 characters or less.')
+        .max(100, 'Certificate ID must be 100 characters or less.')
         .optional()
         .default(''),
 
@@ -128,9 +126,9 @@ const updateGemSchema = z.object({
     clarity:      z.enum(CLARITY_GRADES).optional(),
     cut:          z.enum(CUT_SHAPES).optional(),
     treatment:    z.enum(TREATMENTS).optional(),
-    origin:       z.enum(ORIGINS).optional(),
     description:  z.string().trim().max(5000).optional(),
-    certification:z.string().trim().max(60).optional(),
+    certification_body: z.enum(CERTIFICATION_BODIES).optional(),
+    certification:z.string().trim().max(100).optional(),
     images:       z.array(z.string().url()).max(10).optional(),
     listing_type: z.enum(LISTING_TYPES).optional(),
     buy_now_price:z.number().min(1).max(99_999_999).nullable().optional(),
@@ -146,7 +144,6 @@ const aiValuationSchema = z.object({
     color:        z.string().min(1, 'Color is required.'),
     clarity:      z.string().min(1, 'Clarity is required.'),
     cut:          z.string().min(1, 'Cut is required.'),
-    origin:       z.string().min(1, 'Origin is required.'),
     treatment:    z.string().min(1, 'Treatment is required.'),
 });
 
@@ -178,5 +175,5 @@ module.exports = {
     CLARITY_GRADES,
     CUT_SHAPES,
     TREATMENTS,
-    ORIGINS,
+    CERTIFICATION_BODIES,
 };

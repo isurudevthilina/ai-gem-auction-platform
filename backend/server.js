@@ -16,6 +16,59 @@ const { runAuctionCompletionCron } = require('./src/modules/auctions/auctionComp
 testConnection();
 ensureStorageBuckets().catch(err => console.error('❌ ensureStorageBuckets failed:', err.message));
 
+// Check required tables exist
+const checkTables = async () => {
+    try {
+        const { supabaseAdmin } = require('./src/config/supabase');
+
+        const tables = [
+            { name: 'password_reset_otps', purpose: 'Forgot-password OTP' },
+        ];
+
+        for (const { name, purpose } of tables) {
+            const { error } = await supabaseAdmin.from(name).select('id', { count: 'exact', head: true });
+            if (error && error.message.includes('does not exist')) {
+                console.error(`❌ Table "${name}" does not exist. ${purpose} will fail.`);
+                console.error(`   Run: create table ${name} (id uuid default gen_random_uuid() primary key, ...);`);
+            } else if (error) {
+                console.error(`❌ Table "${name}" check error:`, error.message);
+            } else {
+                console.log(`✅ ${name} table exists`);
+            }
+        }
+        console.log('✅ Email verification uses stateless tokens (no table needed)');
+    } catch (err) {
+        console.error('❌ Table check failed:', err.message);
+    }
+};
+checkTables();
+
+// Verify SMTP configuration on startup
+const verifySMTP = async () => {
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
+        console.warn('⚠️  SMTP not configured. Password reset emails will fail.');
+        return;
+    }
+    try {
+        const { sendMail } = require('./src/utils/email');
+        const transport = require('./src/utils/email').getTransporter?.() || require('nodemailer').createTransport({
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT || '587', 10),
+            secure: process.env.SMTP_SECURE === 'true',
+            auth: { user: process.env.SMTP_USER, pass: (process.env.SMTP_PASS || '').replace(/\s/g, '') },
+        });
+        await transport.verify();
+        console.log('✅ SMTP connection verified');
+    } catch (err) {
+        console.error('❌ SMTP connection failed:', err.message);
+        if (err.message?.includes('535')) {
+            console.error('   → If using Gmail, generate a NEW App Password at myaccount.google.com/apppasswords');
+            console.error('   → Make sure 2-Step Verification is ON in your Google account.');
+        }
+    }
+};
+verifySMTP();
+
 // Initialize Express app
 const app = express();
 

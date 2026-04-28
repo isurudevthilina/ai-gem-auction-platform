@@ -1,9 +1,9 @@
 const rateLimit = require('express-rate-limit');
 
-// General API rate limit — 100 requests per 15 min per IP
+// General API rate limit — 500 requests per 15 min per IP
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 500,
     standardHeaders: true,
     legacyHeaders: false,
     handler: (req, res) => {
@@ -14,10 +14,10 @@ const generalLimiter = rateLimit({
     },
 });
 
-// Stricter limit for auth endpoints — 10 requests per 15 min per IP
+// Auth endpoints — 50 requests per 15 min per IP (generous for dev, OTP + resend)
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 10,
+    max: 50,
     standardHeaders: true,
     legacyHeaders: false,
     handler: (req, res) => {

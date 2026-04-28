@@ -20,7 +20,7 @@ import { useAuth } from '../../../context/AuthContext';
 import {
   ChevronLeft, ChevronRight, RotateCcw, Sparkles,
   TrendingUp, Info, ArrowRight, Share2, Gem, Scale,
-  Palette, Eye, FlaskConical,
+  Palette, Eye, FlaskConical, ShoppingBag, Gavel,
 } from 'lucide-react';
 import { usePricePredictor } from '../hooks/usePricePredictor';
 import SHAPWaterfallChart from '../components/SHAPWaterfallChart';
@@ -643,7 +643,7 @@ const Step4Quality = ({ formData, updateField }) => {
 };
 
 /* ── Step 5: Result ──────────────────────────────────────────── */
-const ResultScreen = ({ result, formData, onReset, onListGem, onShare, shareMsg, userRole }) => {
+const ResultScreen = ({ result, formData, onReset, onListAsDirectSale, onListAsAuction, onShare, shareMsg, userRole }) => {
   const gem = GEM_FAMILIES.find(g => g.value === formData.gemFamily);
 
   return (
@@ -768,23 +768,42 @@ const ResultScreen = ({ result, formData, onReset, onListGem, onShare, shareMsg,
         </button>
 
         {(userRole === 'seller' || userRole === 'admin') && (
-          <button
-            onClick={onListGem}
-            style={{
-              flex: 2, minWidth: 180,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              padding: '12px 24px', borderRadius: 6,
-              background: C.navy, border: 'none', color: C.white,
-              fontSize: '0.9rem', fontWeight: 700, fontFamily: BRAND,
-              cursor: 'pointer', transition: 'all 0.2s',
-              boxShadow: '0 4px 14px rgba(26,77,140,0.25)',
-              letterSpacing: '0.03em',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = C.navyDark; e.currentTarget.style.boxShadow = '0 6px 20px rgba(26,77,140,0.35)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = C.navy; e.currentTarget.style.boxShadow = '0 4px 14px rgba(26,77,140,0.25)'; }}
-          >
-            <Sparkles size={15} /> List This Gem
-          </button>
+          <div style={{ display: 'flex', gap: 10, flex: 2, minWidth: 180 }}>
+            <button
+              onClick={onListAsDirectSale}
+              style={{
+                flex: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                padding: '12px 16px', borderRadius: 6,
+                background: C.navy, border: 'none', color: C.white,
+                fontSize: '0.85rem', fontWeight: 700, fontFamily: BRAND,
+                cursor: 'pointer', transition: 'all 0.2s',
+                boxShadow: '0 4px 14px rgba(26,77,140,0.25)',
+                letterSpacing: '0.03em',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = C.navyDark; e.currentTarget.style.boxShadow = '0 6px 20px rgba(26,77,140,0.35)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = C.navy; e.currentTarget.style.boxShadow = '0 4px 14px rgba(26,77,140,0.25)'; }}
+            >
+              <ShoppingBag size={14} /> Direct Sale
+            </button>
+            <button
+              onClick={onListAsAuction}
+              style={{
+                flex: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                padding: '12px 16px', borderRadius: 6,
+                background: C.gold, border: 'none', color: C.white,
+                fontSize: '0.85rem', fontWeight: 700, fontFamily: BRAND,
+                cursor: 'pointer', transition: 'all 0.2s',
+                boxShadow: '0 4px 14px rgba(196,137,42,0.25)',
+                letterSpacing: '0.03em',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#a87220'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(196,137,42,0.35)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = C.gold; e.currentTarget.style.boxShadow = '0 4px 14px rgba(196,137,42,0.25)'; }}
+            >
+              <Gavel size={14} /> Auction
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -826,20 +845,28 @@ const AIPredictorPage = () => {
     });
   };
 
-  const handleListGem = () => {
-    navigate('/seller-dashboard', {
-      state: {
-        prefill: {
-          gemFamily: formData.gemFamily,
-          caratWeight: formData.caratWeight,
-          shape: formData.shape,
-          clarity: formData.clarity,
-          color: formData.color,
-          treatment: formData.treatment,
-          predictedPrice: result?.predictedPrice,
-        },
-      },
-    });
+  const buildAIPrefill = (listingType) => ({
+    gem_type: formData.gemFamily
+      ? formData.gemFamily.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+      : '',
+    carat_weight: formData.caratWeight ? String(formData.caratWeight) : '',
+    cut: formData.shape || '',
+    clarity: formData.clarity || '',
+    color: formData.color || '',
+    treatment: formData.treatment || '',
+    listing_type: listingType,
+    buy_now_price: listingType === 'direct_sell' && result?.predictedPrice
+      ? String(Math.round(result.predictedPrice))
+      : '',
+    predicted_price: result?.predictedPrice ? String(Math.round(result.predictedPrice)) : '',
+  });
+
+  const handleListAsDirectSale = () => {
+    navigate('/gems/new', { state: { aiPrefill: buildAIPrefill('direct_sell') } });
+  };
+
+  const handleListAsAuction = () => {
+    navigate('/gems/new', { state: { aiPrefill: buildAIPrefill('auction') } });
   };
 
   const isLanding = step === 0;
@@ -884,7 +911,8 @@ const AIPredictorPage = () => {
               result={result}
               formData={formData}
               onReset={handleReset}
-              onListGem={handleListGem}
+              onListAsDirectSale={handleListAsDirectSale}
+              onListAsAuction={handleListAsAuction}
               onShare={handleShare}
               shareMsg={shareMsg}
               userRole={userRole}

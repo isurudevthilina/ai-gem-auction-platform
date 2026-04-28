@@ -3,7 +3,7 @@ const { supabaseAdmin } = require('../../config/supabase');
 // ─── Shared select string ────────────────────────────────────────────────────
 const GEM_SELECT = `
     id, title, description, carat_weight, cut, clarity, color,
-    origin, treatment, certification, images,
+    treatment, certification_body, certification, images,
     listing_type, status, buy_now_price, predicted_price,
     created_at, updated_at,
     seller:profiles!gems_seller_id_fkey ( id, full_name, avatar_url ),
@@ -12,7 +12,7 @@ const GEM_SELECT = `
 
 const GEM_SELECT_MINIMAL = `
     id, title, carat_weight, color, clarity, cut, status,
-    buy_now_price, images, listing_type,
+    buy_now_price, images, listing_type, certification_body, certification,
     created_at, updated_at,
     category:categories ( id, name, slug )
 `;

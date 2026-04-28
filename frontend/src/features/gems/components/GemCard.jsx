@@ -248,7 +248,7 @@ const GemCard = ({ gem, onClick }) => {
                     margin: 0, fontFamily: DISPLAY, fontSize: 12, color: C.muted,
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>
-                    {[gem.carat_weight && `${gem.carat_weight}ct`, gem.cut, gem.origin].filter(Boolean).join(' · ')}
+                    {[gem.carat_weight && `${gem.carat_weight}ct`, gem.cut, gem.certification_body].filter(Boolean).join(' · ')}
                 </p>
 
                 {/* ROW 4: Price */}
@@ -366,9 +366,9 @@ export const GemCardRow = ({ gem, onClick }) => {
                     {gem.carat_weight && <span>Carat: {gem.carat_weight}ct</span>}
                     {gem.cut && <span>Cut: {gem.cut}</span>}
                     {gem.clarity && <span>Clarity: {gem.clarity}</span>}
-                    {gem.origin && <span>Origin: {gem.origin}</span>}
                     {gem.treatment && <span>Treatment: {gem.treatment}</span>}
-                    {certVerified && <span>Cert: {certBody || 'Verified'}</span>}
+                    {gem.certification_body && <span>Cert: {gem.certification_body}{gem.certification ? ' · ' + gem.certification : ''}</span>}
+                    {certVerified && !gem.certification_body && <span>Cert: {certBody || 'Verified'}</span>}
                 </div>
             </div>
 

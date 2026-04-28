@@ -89,13 +89,17 @@ const GemDetails = () => {
     const isOwner = (user?.id === gem.seller?.id || user?.role === 'admin') && gem.status !== 'sold';
     const statusStyle = STATUS_MAP[gem.status] || STATUS_MAP.listed;
 
+    const certDisplay = gem.certification_body
+        ? `${gem.certification_body}${gem.certification ? ' · ' + gem.certification : ''}`
+        : gem.certification;
+
     const specs = [
         { label: 'Carat Weight', value: gem.carat_weight ? `${gem.carat_weight} ct` : null },
         { label: 'Color', value: gem.color },
         { label: 'Clarity', value: gem.clarity },
         { label: 'Cut / Shape', value: gem.cut },
         { label: 'Treatment', value: gem.treatment },
-        { label: 'Origin', value: gem.origin },
+        { label: 'Certification', value: certDisplay },
     ].filter(s => s.value);
 
     const certsArr = gem.certificates ? (Array.isArray(gem.certificates) ? gem.certificates : [gem.certificates]) : [];
@@ -223,7 +227,7 @@ const GemDetails = () => {
                                     {isVerified ? <Shield size={20} color={T.green} /> : <Award size={20} color="#d97706" />}
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontFamily: BODY, fontSize: '0.82rem', fontWeight: 700, color: T.text }}>{certInfo?.issued_by || gem.certification || 'Certificate'}</div>
+                                    <div style={{ fontFamily: BODY, fontSize: '0.82rem', fontWeight: 700, color: T.text }}>{certInfo?.issued_by || gem.certification_body || gem.certification || 'Certificate'}</div>
                                     <div style={{ fontFamily: BODY, fontSize: '0.72rem', fontWeight: 600, color: isVerified ? T.green : '#d97706' }}>{isVerified ? '\u2713 Verified Certificate' : 'Pending Review'}</div>
                                 </div>
                             </div>

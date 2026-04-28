@@ -4,8 +4,8 @@ const ApiError = require('../../utils/apiError');
 const TRANSACTION_SELECT = `
   *,
   gem:gems!transactions_gem_id_fkey(
-    id, title, images, carat_weight, color, clarity, cut, origin,
-    status, buy_now_price, predicted_price, certification,
+    id, title, images, carat_weight, color, clarity, cut,
+    status, buy_now_price, predicted_price, certification_body, certification,
     category:categories!gems_category_id_fkey(id, name)
   ),
   buyer:profiles!transactions_buyer_id_fkey(

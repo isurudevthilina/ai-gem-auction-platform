@@ -4,12 +4,12 @@
  * Wraps GemForm, provides TanStack Query mutation, handles redirects & toasts.
  */
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useCreateGem } from '../hooks/useCreateGem';
 import { getGemCategories } from '../services/gemsService';
 import GemForm from '../components/GemForm';
-import { CheckCircle, AlertCircle, X, FileText, Shield } from 'lucide-react';
+import { CheckCircle, AlertCircle, X, FileText, Shield, Sparkles } from 'lucide-react';
 import { T, SERIF, DISPLAY, BODY } from '../components/formTokens';
 const DRAFT_KEY = 'gembid_gem_draft';
 
@@ -37,11 +37,30 @@ const Toast = ({ message, type = 'success', onClose }) => (
 const CreateGemPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [categories, setCategories] = useState([]);
     const [toast, setToast] = useState(null);
     const [submitMode, setSubmitMode] = useState('draft');
     const [hasDraft, setHasDraft] = useState(false);
     const [certPrompt, setCertPrompt] = useState(false);
+    const [aiPrefillBanner, setAiPrefillBanner] = useState(null);
+
+    // Handle AI predictor prefill
+    useEffect(() => {
+        const prefill = location.state?.aiPrefill;
+        if (prefill) {
+            const draft = { ...prefill };
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+            setHasDraft(true);
+            setAiPrefillBanner({
+                gemType: prefill.gem_type,
+                predictedPrice: prefill.predicted_price,
+                listingType: prefill.listing_type,
+            });
+            // Clear state so refresh doesn't re-apply
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, []);
 
     useEffect(() => {
         try {
@@ -100,8 +119,40 @@ const CreateGemPage = () => {
                     </p>
                 </div>
 
+                {/* AI Prefill banner */}
+                {aiPrefillBanner && (
+                    <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '12px 18px', marginBottom: 20, borderRadius: 10,
+                        background: 'rgba(196,137,42,0.08)', border: `0.5px solid ${T.gold}40`,
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Sparkles size={16} color={T.gold} />
+                            <span style={{ fontFamily: BODY, fontSize: '0.84rem', color: T.gold, fontWeight: 600 }}>
+                                Auto-filled from AI Price Prediction
+                                {aiPrefillBanner.predictedPrice && (
+                                    <span style={{ marginLeft: 6, fontWeight: 700 }}>
+                                        · Est. {Number(aiPrefillBanner.predictedPrice).toLocaleString()} LKR
+                                    </span>
+                                )}
+                            </span>
+                        </div>
+                        <button onClick={() => {
+                            localStorage.removeItem(DRAFT_KEY);
+                            setAiPrefillBanner(null);
+                            setHasDraft(false);
+                            window.location.reload();
+                        }} style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            fontFamily: BODY, fontSize: '0.78rem', color: T.muted, textDecoration: 'underline',
+                        }}>
+                            Clear
+                        </button>
+                    </div>
+                )}
+
                 {/* Draft restoration banner */}
-                {hasDraft && (
+                {hasDraft && !aiPrefillBanner && (
                     <div style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         padding: '12px 18px', marginBottom: 20, borderRadius: 10,
@@ -130,6 +181,7 @@ const CreateGemPage = () => {
                     categories={categories}
                     onSubmit={handleSubmit}
                     isSubmitting={mutation.isPending}
+                    aiQuickList={!!aiPrefillBanner}
                 />
             </div>
 

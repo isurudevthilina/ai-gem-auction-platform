@@ -10,6 +10,8 @@ import Unauthorized from './shared/components/Unauthorized';
 import ScrollLandingPage from './shared/components/ScrollLandingPage';
 import Signup from './features/users/pages/Signup';
 import Login from './features/users/pages/Login';
+import ForgotPassword from './features/users/pages/ForgotPassword';
+import VerifyEmail from './features/users/pages/VerifyEmail';
 import SellerDashboard from './features/users/pages/SellerDashboard';
 import BuyerOverviewPage from './features/users/pages/BuyerOverviewPage';
 import Profile from './features/users/pages/Profile';
@@ -67,6 +69,8 @@ function App() {
                         <Route path="/"       element={<ScrollLandingPage />} />
                         <Route path="/signup"  element={<Signup />} />
                         <Route path="/login"   element={<Login />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                        <Route path="/verify-email" element={<VerifyEmail />} />
 
                         {/* ── Public pages with Navbar + Footer ── */}
                         <Route path="/auctions" element={

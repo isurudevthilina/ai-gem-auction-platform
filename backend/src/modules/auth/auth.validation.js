@@ -38,4 +38,25 @@ const refreshSchema = z.object({
     refresh_token: z.string().min(1, 'Refresh token is required.'),
 });
 
-module.exports = { registerSchema, loginSchema, resendVerificationSchema, refreshSchema };
+const forgotPasswordSchema = z.object({
+    email: z.string().trim().toLowerCase().email('Invalid email address.'),
+});
+
+const verifyOTPSchema = z.object({
+    email: z.string().trim().toLowerCase().email('Invalid email address.'),
+    otp: z.string().length(6, 'OTP must be 6 digits.').regex(/^\d{6}$/, 'OTP must contain only numbers.'),
+});
+
+const resetPasswordSchema = z.object({
+    email: z.string().trim().toLowerCase().email('Invalid email address.'),
+    otp: z.string().length(6, 'OTP must be 6 digits.').regex(/^\d{6}$/, 'OTP must contain only numbers.'),
+    new_password: z.string().min(8, 'Password must be at least 8 characters.')
+        .regex(passwordRegex, 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).'),
+});
+
+const verifyEmailSchema = z.object({
+    email: z.string().trim().toLowerCase().email('Invalid email address.'),
+    otp: z.string().length(6, 'OTP must be exactly 6 digits.').regex(/^\d{6}$/, 'OTP must contain only numbers.'),
+});
+
+module.exports = { registerSchema, loginSchema, resendVerificationSchema, refreshSchema, forgotPasswordSchema, verifyOTPSchema, resetPasswordSchema, verifyEmailSchema };

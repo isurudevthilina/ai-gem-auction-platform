@@ -134,7 +134,7 @@ const Signup = () => {
 
             navigate('/login', {
                 replace: true,
-                state: { email: values.email, from },
+                state: { email: values.email, from, verifyEmail: true },
             });
         } catch (err) {
             const msg = err.response?.data?.message ?? err.message ?? 'Sign up failed. Please try again.';

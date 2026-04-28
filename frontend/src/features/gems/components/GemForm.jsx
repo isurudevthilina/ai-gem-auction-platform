@@ -3,6 +3,9 @@
  * Step 1: Stone Details
  * Step 2: Listing Details (description, certification, images, listing type)
  * Step 3: Review & Submit
+ *
+ * AI Quick-List Mode: when aiQuickList=true, stone details are read-only
+ * and the form starts on step 2 with a 2-step flow.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
@@ -25,11 +28,10 @@ const step1Schema = z.object({
     clarity:      z.string().optional(),
     cut:          z.string().optional(),
     treatment:    z.string().optional(),
-    origin:       z.string().optional(),
 });
 const step2Base = z.object({
     description:   z.string().min(50, 'Description must be at least 50 characters.').max(5000).optional().or(z.literal('')),
-    certification: z.string().max(60).optional(),
+    certification: z.string().max(100).optional(),
     listing_type:  z.enum(['direct_sell', 'auction']),
     buy_now_price: z.string().optional(),
 });
@@ -45,10 +47,9 @@ const step2Schema = step2Base.refine(buyNowRefine, buyNowRefineOpts);
 const fullSchema = step1Schema.merge(step2Base).refine(buyNowRefine, buyNowRefineOpts);
 
 /* ─── Step Indicator ─── */
-const STEPS = ['Stone Details', 'Listing Details', 'Review & Submit'];
-const StepIndicator = ({ current }) => (
+const StepIndicator = ({ current, steps }) => (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, marginBottom: 40 }}>
-        {STEPS.map((label, i) => {
+        {steps.map((label, i) => {
             const step = i + 1;
             const done = current > step;
             const active = current === step;
@@ -72,7 +73,7 @@ const StepIndicator = ({ current }) => (
                             letterSpacing: '0.02em', whiteSpace: 'nowrap',
                         }}>{label}</span>
                     </div>
-                    {i < STEPS.length - 1 && (
+                    {i < steps.length - 1 && (
                         <div style={{
                             width: 80, height: 2, margin: '0 12px',
                             marginBottom: 24,
@@ -89,11 +90,14 @@ const StepIndicator = ({ current }) => (
 /* ════════════════════════════════════════════════════════════════════════════
    GEM FORM COMPONENT
 ════════════════════════════════════════════════════════════════════════════ */
-const GemForm = ({ categories = [], onSubmit, isSubmitting = false, initialValues = null, isEditing = false }) => {
-    const [step, setStep] = useState(1);
+const GemForm = ({ categories = [], onSubmit, isSubmitting = false, initialValues = null, isEditing = false, aiQuickList = false }) => {
+    const FULL_STEPS = ['Stone Details', 'Listing Details', 'Review & Submit'];
+    const QUICK_STEPS = ['Add Details', 'Review & Submit'];
+    const steps = aiQuickList ? QUICK_STEPS : FULL_STEPS;
+
+    const [step, setStep] = useState(aiQuickList ? 2 : 1);
     const [imageFiles, setImageFiles] = useState([]);
     const [imagePreviews, setImagePreviews] = useState(() => {
-        // For editing, pre-fill previews from existing images
         if (initialValues?.images?.length) {
             return initialValues.images.filter(u => typeof u === 'string' && !u.startsWith('model:'));
         }
@@ -108,8 +112,8 @@ const GemForm = ({ categories = [], onSubmit, isSubmitting = false, initialValue
 
     const defaults = {
         gem_type: '', title: '', carat_weight: '', color: '', clarity: '',
-        cut: '', treatment: '', origin: '', description: '',
-        certification: '', listing_type: 'direct_sell',
+        cut: '', treatment: '', description: '',
+        certification_body: '', certification: '', listing_type: 'direct_sell',
         buy_now_price: '', ...savedDraft,
     };
 
@@ -133,11 +137,19 @@ const GemForm = ({ categories = [], onSubmit, isSubmitting = false, initialValue
         if (!isEditing) localStorage.setItem(DRAFT_KEY, JSON.stringify(getValues()));
     }, [step]);
 
+    // Auto-suggest title on mount if draft/AI prefill has data
+    useEffect(() => {
+        const v = getValues();
+        if (v.gem_type && v.carat_weight && !v.title) {
+            autoTitle();
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     // Auto-suggest title
     const autoTitle = useCallback(() => {
         const v = getValues();
         if (v.carat_weight && v.gem_type) {
-            const parts = [v.carat_weight ? `${v.carat_weight}ct` : '', v.color, v.gem_type, v.origin ? `from ${v.origin}` : ''].filter(Boolean);
+            const parts = [v.carat_weight ? `${v.carat_weight}ct` : '', v.color, v.gem_type].filter(Boolean);
             setValue('title', parts.join(' '), { shouldValidate: true });
         }
     }, [getValues, setValue]);
@@ -145,13 +157,18 @@ const GemForm = ({ categories = [], onSubmit, isSubmitting = false, initialValue
     // Step navigation with validation
     const goNext = async () => {
         let fields;
-        if (step === 1) fields = ['gem_type', 'title', 'carat_weight', 'color', 'clarity', 'cut', 'treatment', 'origin'];
+        if (step === 1) fields = ['gem_type', 'title', 'carat_weight', 'color', 'clarity', 'cut', 'treatment'];
         else if (step === 2) fields = ['description', 'certification', 'listing_type', 'buy_now_price'];
         const valid = await trigger(fields);
-        if (valid) setStep(s => Math.min(s + 1, 3));
+        if (valid) setStep(s => Math.min(s + 1, aiQuickList ? 3 : 3));
     };
 
-    const goBack = () => setStep(s => Math.max(s - 1, 1));
+    const goBack = () => setStep(s => Math.max(s - 1, aiQuickList ? 2 : 1));
+
+    // Escape hatch: switch from quick-list to full form
+    const handleEditStoneDetails = () => {
+        setStep(1);
+    };
 
     const handleFinalSubmit = (mode = 'draft') => {
         const values = getValues();
@@ -168,22 +185,32 @@ const GemForm = ({ categories = [], onSubmit, isSubmitting = false, initialValue
 
     return (
         <div>
-            <StepIndicator current={step} />
+            <StepIndicator current={step} steps={steps} />
 
             <div style={{ background: T.white, border: `0.5px solid ${T.border}`, borderRadius: 16, padding: '36px 40px' }}>
                 {step === 1 && (
                     <StepStoneDetails
                         register={register} control={control} errors={errors}
-                        watch={watch} autoTitle={autoTitle} categories={categories}
+                        watch={watch} setValue={setValue} autoTitle={autoTitle} categories={categories}
                     />
                 )}
                 {step === 2 && (
-                    <StepListingDetails
-                        register={register} control={control} errors={errors}
-                        watch={watch}
-                        imageFiles={imageFiles} setImageFiles={setImageFiles}
-                        imagePreviews={imagePreviews} setImagePreviews={setImagePreviews}
-                    />
+                    <>
+                        {aiQuickList && (
+                            <StepStoneDetails
+                                register={register} control={control} errors={errors}
+                                watch={watch} setValue={setValue} autoTitle={autoTitle} categories={categories}
+                                readOnly
+                                onEdit={handleEditStoneDetails}
+                            />
+                        )}
+                        <StepListingDetails
+                            register={register} control={control} errors={errors}
+                            watch={watch}
+                            imageFiles={imageFiles} setImageFiles={setImageFiles}
+                            imagePreviews={imagePreviews} setImagePreviews={setImagePreviews}
+                        />
+                    </>
                 )}
                 {step === 3 && (
                     <StepReview getValues={getValues} imageFiles={imageFiles} imagePreviews={imagePreviews} />
@@ -191,7 +218,7 @@ const GemForm = ({ categories = [], onSubmit, isSubmitting = false, initialValue
 
                 {/* Navigation */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 36, paddingTop: 24, borderTop: `0.5px solid ${T.border}` }}>
-                    {step > 1 ? (
+                    {step > (aiQuickList ? 2 : 1) ? (
                         <button type="button" onClick={goBack}
                             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', background: 'transparent', border: `0.5px solid ${T.border}`, borderRadius: 8, cursor: 'pointer', fontFamily: BODY, fontSize: '0.85rem', fontWeight: 600, color: T.muted, transition: 'all 0.2s' }}>
                             <ChevronLeft size={16} /> Back

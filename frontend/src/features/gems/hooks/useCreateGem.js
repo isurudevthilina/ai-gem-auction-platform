@@ -37,21 +37,21 @@ export const useCreateGem = ({ onSuccess, onError } = {}) => {
             }
 
             const payload = {
-                title:         formData.title,
-                category_id:   formData.category_id,
-                carat_weight:  parseFloat(formData.carat_weight),
-                color:         formData.color || undefined,
-                clarity:       formData.clarity || undefined,
-                cut:           formData.cut || undefined,
-                treatment:     formData.treatment || undefined,
-                origin:        formData.origin || undefined,
-                description:   formData.description || undefined,
-                certification: formData.certification || undefined,
-                images:        urls,
-                listing_type:  formData.listing_type,
-                buy_now_price: formData.listing_type === 'direct_sell'
+                title:              formData.title,
+                category_id:        formData.category_id,
+                carat_weight:       parseFloat(formData.carat_weight),
+                color:              formData.color || undefined,
+                clarity:            formData.clarity || undefined,
+                cut:                formData.cut || undefined,
+                treatment:          formData.treatment || undefined,
+                certification_body: formData.certification_body || undefined,
+                certification:      formData.certification || undefined,
+                description:        formData.description || undefined,
+                images:             urls,
+                listing_type:       formData.listing_type,
+                buy_now_price:      formData.listing_type === 'direct_sell'
                     ? parseFloat(formData.buy_now_price) : null,
-                status:        formData.status || 'listed',
+                status:             formData.status || 'listed',
             };
 
             console.log('[useCreateGem] payload:', JSON.stringify(payload).substring(0, 200));

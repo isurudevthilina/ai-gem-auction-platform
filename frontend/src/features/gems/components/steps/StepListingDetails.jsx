@@ -7,6 +7,9 @@ import { Upload, X, Box, ShoppingBag, Gavel, Shield, ArrowUpRight } from 'lucide
 import { Link } from 'react-router-dom';
 import { T, SERIF, DISPLAY, BODY, inputBase, labelStyle, focusRing } from '../formTokens';
 import FieldError from '../FieldError';
+import Select from '../Select';
+
+const CERT_BODY_OPTIONS = ['GIA', 'AGS', 'IGI', 'GRS', 'GIT', 'GGTL', 'Gübelin', 'Other'];
 
 const StepListingDetails = ({ register, control, errors, watch, imageFiles, setImageFiles, imagePreviews, setImagePreviews }) => {
     const fileInputRef = useRef(null);
@@ -54,11 +57,21 @@ const StepListingDetails = ({ register, control, errors, watch, imageFiles, setI
             {/* Certification */}
             <div style={{ marginBottom: 24 }}>
                 <label style={labelStyle}>Certification</label>
-                <input {...register('certification')} placeholder="e.g. GIA 2141438071"
-                    style={{ ...inputBase, maxWidth: 400 }}
-                    onFocus={e => { e.target.style.borderColor = T.borderFocus; Object.assign(e.target.style, focusRing); }}
-                    onBlur={e => { e.target.style.borderColor = T.border; e.target.style.boxShadow = 'none'; }}
-                />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, maxWidth: 600 }}>
+                    <div>
+                        <Controller name="certification_body" control={control} render={({ field }) => (
+                            <Select value={field.value} onChange={field.onChange}
+                                options={CERT_BODY_OPTIONS} placeholder="Select lab (e.g. GIA)" />
+                        )} />
+                    </div>
+                    <div>
+                        <input {...register('certification')} placeholder="Certificate ID (e.g. 2141438071)"
+                            style={{ ...inputBase }}
+                            onFocus={e => { e.target.style.borderColor = T.borderFocus; Object.assign(e.target.style, focusRing); }}
+                            onBlur={e => { e.target.style.borderColor = T.border; e.target.style.boxShadow = 'none'; }}
+                        />
+                    </div>
+                </div>
                 <div style={{
                     marginTop: 12, padding: '12px 16px', borderRadius: 10,
                     background: 'rgba(26,77,140,0.05)', border: `1px solid rgba(26,77,140,0.12)`,

@@ -9,6 +9,10 @@ const StepReview = ({ getValues, imageFiles, imagePreviews }) => {
     const { formatPrice } = useCurrency();
     const v = getValues();
 
+    const certDisplay = v.certification_body
+        ? `${v.certification_body}${v.certification ? ' · ' + v.certification : ''}`
+        : (v.certification || '—');
+
     const summaryRows = [
         { label: 'Gem Type',      value: v.gem_type },
         { label: 'Title',         value: v.title },
@@ -17,8 +21,7 @@ const StepReview = ({ getValues, imageFiles, imagePreviews }) => {
         { label: 'Clarity',       value: v.clarity || '—' },
         { label: 'Cut / Shape',   value: v.cut || '—' },
         { label: 'Treatment',     value: v.treatment || '—' },
-        { label: 'Origin',        value: v.origin || '—' },
-        { label: 'Certification', value: v.certification || '—' },
+        { label: 'Certification', value: certDisplay },
         { label: 'Listing Type',  value: v.listing_type === 'direct_sell' ? 'Direct Sale' : 'Auction' },
     ];
     if (v.listing_type === 'direct_sell' && v.buy_now_price) {
