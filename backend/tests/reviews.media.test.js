@@ -14,6 +14,12 @@ const repository = require('../src/modules/reviews/reviews.repository');
 const { supabaseAdmin } = require('../src/config/supabase');
 const service = require('../src/modules/reviews/reviews.service');
 
+const makeJwt = (payload) => {
+  const encodedHeader = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  return `${encodedHeader}.${encodedPayload}.signature`;
+};
+
 describe('review media upload URLs', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -86,8 +92,8 @@ describe('storage bucket bootstrap', () => {
     jest.unmock('../src/config/supabase');
     process.env.NODE_ENV = 'test';
     process.env.SUPABASE_URL = 'https://example.supabase.co';
-    process.env.SUPABASE_ANON_KEY = 'anon-key';
-    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-key';
+    process.env.SUPABASE_ANON_KEY = makeJwt({ role: 'anon' });
+    process.env.SUPABASE_SERVICE_ROLE_KEY = makeJwt({ role: 'service_role' });
 
     const getBucket = jest.fn()
       .mockResolvedValueOnce({ data: { name: 'gem-images' }, error: null })

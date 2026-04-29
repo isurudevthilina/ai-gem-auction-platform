@@ -32,8 +32,8 @@ const signupSchema = z.object({
         (v) => !v || slPhoneRegex.test(v),
         'Invalid Sri Lankan phone number',
     ),
-    province: z.string().min(1, 'Please select your province'),
-    district: z.string().min(1, 'Please select your district'),
+    province: z.string().optional(),
+    district: z.string().optional(),
     city: z.string().max(60, 'City is too long').optional(),
     address_line1: z.string().max(120, 'Address line is too long').optional(),
     address_line2: z.string().max(120, 'Address line is too long').optional(),
@@ -49,6 +49,12 @@ const signupSchema = z.object({
 }).refine((data) => data.password === data.confirm, {
     message: 'Passwords do not match',
     path: ['confirm'],
+}).refine((data) => data.role !== 'seller' || !!data.province, {
+    message: 'Please select your province',
+    path: ['province'],
+}).refine((data) => data.role !== 'seller' || !!data.district, {
+    message: 'Please select your district',
+    path: ['district'],
 }).refine((data) => {
     if (!data.province || !data.district) return true;
     return (DISTRICTS_BY_PROVINCE[data.province] || []).includes(data.district);
@@ -107,6 +113,7 @@ const Signup = () => {
     });
 
     const role = watch('role');
+    const isSeller = role === 'seller';
     const password = watch('password');
     const province = watch('province');
     const district = watch('district');
@@ -146,12 +153,12 @@ const Signup = () => {
                 full_name: values.full_name,
                 role: values.role,
                 phone_number: values.phone_number || undefined,
-                district: values.district,
-                province: values.province,
-                city: values.city || undefined,
-                address_line1: values.address_line1 || undefined,
-                address_line2: values.address_line2 || undefined,
-                postal_code: values.postal_code || undefined,
+                district: values.role === 'seller' ? values.district : undefined,
+                province: values.role === 'seller' ? values.province : undefined,
+                city: values.role === 'seller' ? (values.city || undefined) : undefined,
+                address_line1: values.role === 'seller' ? (values.address_line1 || undefined) : undefined,
+                address_line2: values.role === 'seller' ? (values.address_line2 || undefined) : undefined,
+                postal_code: values.role === 'seller' ? (values.postal_code || undefined) : undefined,
                 nic_number: values.role === 'seller' ? values.nic_number : undefined,
                 business_name: values.role === 'seller' ? (values.business_name || undefined) : undefined,
                 business_registration_number: values.role === 'seller' ? values.business_registration_number : undefined,
@@ -226,53 +233,57 @@ const Signup = () => {
                             {...register('phone_number')} {...f('phone_number')} />
                         {errors.phone_number && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.phone_number.message}</p>}
                     </Field>
-                    <Field label="Province">
-                        <select {...register('province')}
-                            onFocus={() => setFocused('province')} onBlur={() => setFocused(null)}
-                            style={{ ...fieldStyle(focused === 'province', !!errors.province), appearance: 'none', cursor: 'pointer' }}>
-                            <option value="">Select Province</option>
-                            {SL_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-                        </select>
-                        {errors.province && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.province.message}</p>}
-                    </Field>
-                    <Field label="District">
-                        <select {...register('district')}
-                            disabled={!province}
-                            onFocus={() => setFocused('district')} onBlur={() => setFocused(null)}
-                            style={{ ...fieldStyle(focused === 'district', !!errors.district), appearance: 'none', cursor: province ? 'pointer' : 'not-allowed', opacity: province ? 1 : 0.65 }}>
-                            <option value="">{province ? 'Select District' : 'Select Province First'}</option>
-                            {districtOptions.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                        {errors.district && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.district.message}</p>}
-                    </Field>
-                    <Field label="City">
-                        <input type="text" placeholder="Ratnapura" autoComplete="address-level2"
-                            {...register('city')} {...f('city')} />
-                        {errors.city && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.city.message}</p>}
-                    </Field>
-                    <Field label="Postal Code">
-                        <input type="text" placeholder="70000" autoComplete="postal-code"
-                            {...register('postal_code')} {...f('postal_code')} />
-                        {errors.postal_code && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.postal_code.message}</p>}
-                    </Field>
-                    <div style={{ gridColumn: '1 / -1' }}>
-                        <Field label="Address Line 1">
-                            <input type="text" placeholder="No. 12, Gem Street" autoComplete="address-line1"
-                                {...register('address_line1')} {...f('address_line1')} />
-                            {errors.address_line1 && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.address_line1.message}</p>}
-                        </Field>
-                    </div>
-                    <div style={{ gridColumn: '1 / -1' }}>
-                        <Field label="Address Line 2">
-                            <input type="text" placeholder="Apartment, suite, or landmark" autoComplete="address-line2"
-                                {...register('address_line2')} {...f('address_line2')} />
-                            {errors.address_line2 && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.address_line2.message}</p>}
-                        </Field>
-                    </div>
+                    {isSeller && (
+                        <>
+                            <Field label="Province">
+                                <select {...register('province')}
+                                    onFocus={() => setFocused('province')} onBlur={() => setFocused(null)}
+                                    style={{ ...fieldStyle(focused === 'province', !!errors.province), appearance: 'none', cursor: 'pointer' }}>
+                                    <option value="">Select Province</option>
+                                    {SL_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                                </select>
+                                {errors.province && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.province.message}</p>}
+                            </Field>
+                            <Field label="District">
+                                <select {...register('district')}
+                                    disabled={!province}
+                                    onFocus={() => setFocused('district')} onBlur={() => setFocused(null)}
+                                    style={{ ...fieldStyle(focused === 'district', !!errors.district), appearance: 'none', cursor: province ? 'pointer' : 'not-allowed', opacity: province ? 1 : 0.65 }}>
+                                    <option value="">{province ? 'Select District' : 'Select Province First'}</option>
+                                    {districtOptions.map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+                                {errors.district && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.district.message}</p>}
+                            </Field>
+                            <Field label="City">
+                                <input type="text" placeholder="Ratnapura" autoComplete="address-level2"
+                                    {...register('city')} {...f('city')} />
+                                {errors.city && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.city.message}</p>}
+                            </Field>
+                            <Field label="Postal Code">
+                                <input type="text" placeholder="70000" autoComplete="postal-code"
+                                    {...register('postal_code')} {...f('postal_code')} />
+                                {errors.postal_code && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.postal_code.message}</p>}
+                            </Field>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <Field label="Address Line 1">
+                                    <input type="text" placeholder="No. 12, Gem Street" autoComplete="address-line1"
+                                        {...register('address_line1')} {...f('address_line1')} />
+                                    {errors.address_line1 && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.address_line1.message}</p>}
+                                </Field>
+                            </div>
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <Field label="Address Line 2">
+                                    <input type="text" placeholder="Apartment, suite, or landmark" autoComplete="address-line2"
+                                        {...register('address_line2')} {...f('address_line2')} />
+                                    {errors.address_line2 && <p style={{ color: '#dc2626', fontSize: '0.75rem', marginTop: '3px' }}>{errors.address_line2.message}</p>}
+                                </Field>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Seller fields */}
-                {role === 'seller' && (
+                {isSeller && (
                     <div style={{ marginTop: '4px', paddingTop: '16px', borderTop: '1px solid rgba(212,175,55,0.25)' }}>
                         <p style={{ ...labelStyle, color: '#B8942E', marginBottom: '14px', textAlign: 'center', fontSize: '0.62rem' }}>
                             Seller Identity &amp; Business Details

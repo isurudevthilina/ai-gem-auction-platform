@@ -258,6 +258,7 @@ const registerUser = async (data) => {
 
     if (profileError) {
         console.error('Profile upsert error:', profileError.message);
+        throw new ApiError(500, 'Failed to save profile information. Please try again.');
     }
 
     // Send verification email via our SMTP

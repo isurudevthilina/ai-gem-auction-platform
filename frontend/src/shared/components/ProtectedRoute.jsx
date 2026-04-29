@@ -11,8 +11,9 @@ const ProtectedRoute = ({ children, roles }) => {
         return <Navigate to="/login" state={{ from: location.pathname }} replace />;
     }
 
-    if (roles && user && !roles.includes(user.role)) {
-        return <Navigate to="/unauthorized" replace />;
+    const role = String(user?.role || '').trim().toLowerCase();
+    if (roles && !roles.includes(role)) {
+        return <Navigate to="/unauthorized?reason=role" replace />;
     }
 
     return children;

@@ -80,6 +80,33 @@ const successBoxStyle = {
     lineHeight: 1.5,
 };
 
+const roleHome = (role) => {
+    if (role === 'admin') return '/admin-dashboard';
+    if (role === 'seller') return '/seller-dashboard';
+    return '/overview';
+};
+
+const pathAllowedForRole = (path, role) => {
+    if (!path || path === '/login' || path.startsWith('/unauthorized')) return false;
+
+    const protectedByRole = [
+        { match: (p) => p === '/overview', roles: ['buyer'] },
+        { match: (p) => p === '/seller-dashboard', roles: ['seller'] },
+        { match: (p) => p.startsWith('/admin-dashboard'), roles: ['admin'] },
+        { match: (p) => p === '/gems/new', roles: ['seller', 'admin'] },
+        { match: (p) => p === '/auctions/new', roles: ['seller', 'admin'] },
+        { match: (p) => /^\/gems\/[^/]+\/edit$/.test(p), roles: ['seller', 'admin'] },
+    ];
+
+    const rule = protectedByRole.find(({ match }) => match(path));
+    return !rule || rule.roles.includes(role);
+};
+
+const getPostLoginPath = (profile, from) => {
+    const role = String(profile?.role || 'buyer').trim().toLowerCase();
+    return pathAllowedForRole(from, role) ? from : roleHome(role);
+};
+
 const Login = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -104,11 +131,7 @@ const Login = () => {
         setLoading(true);
         try {
             const profile = await login(values);
-
-            const role = profile?.role ?? 'buyer';
-            if (from) return navigate(from, { replace: true });
-            if (role === 'admin')  return navigate('/admin-dashboard',  { replace: true });
-            navigate('/gems', { replace: true });
+            navigate(getPostLoginPath(profile, from), { replace: true });
         } catch (err) {
             const msg = err.response?.data?.message ?? err.message ?? 'Sign in failed. Please try again.';
             if (err.response?.status === 403) {
@@ -133,10 +156,7 @@ const Login = () => {
             setSuccess('Email verified! Signing you in...');
             // Auto-login after verification
             const profile = await login({ email: getValues('email'), password: getValues('password') });
-            const role = profile?.role ?? 'buyer';
-            if (from) return navigate(from, { replace: true });
-            if (role === 'admin')  return navigate('/admin-dashboard',  { replace: true });
-            navigate('/gems', { replace: true });
+            navigate(getPostLoginPath(profile, from), { replace: true });
         } catch (err) {
             setError(err.response?.data?.message ?? 'Invalid verification code.');
         } finally {

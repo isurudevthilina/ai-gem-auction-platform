@@ -20,6 +20,17 @@ const PROFILE_CHANGE_KEYS = [
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 const hashOTP = (otp) => crypto.createHash('sha256').update(String(otp)).digest('hex');
 
+const isMissingProfileRowError = (err) => err?.code === 'PGRST116';
+const isStorageRlsError = (err) => (
+    String(err?.statusCode || err?.status || '') === '403'
+    || /row-level security|rls/i.test(err?.message || '')
+);
+
+const profileUpdateNotFoundError = () => new ApiError(
+    404,
+    'Profile could not be updated because no matching profile row was found.',
+);
+
 const getAuthUserMetadata = async (userId) => {
     const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
     if (error || !data?.user) throw new ApiError(404, 'User not found');
@@ -80,7 +91,12 @@ const getProfile = async (userId) => {
 };
 
 const updateProfile = async (userId, data) => {
-    return repository.update(userId, data);
+    try {
+        return await repository.update(userId, data);
+    } catch (err) {
+        if (isMissingProfileRowError(err)) throw profileUpdateNotFoundError();
+        throw err;
+    }
 };
 
 const uploadAvatar = async (userId, file) => {
@@ -99,11 +115,23 @@ const uploadAvatar = async (userId, file) => {
         .upload(path, file.buffer, { contentType: file.mimetype, upsert: true });
     if (uploadError) {
         console.error('Avatar upload error:', uploadError);
+        if (isStorageRlsError(uploadError)) {
+            throw new ApiError(
+                500,
+                'Avatar upload is blocked by Supabase Storage RLS. Check that the backend is using SUPABASE_SERVICE_ROLE_KEY and restart the server.',
+                uploadError.message,
+            );
+        }
         throw new ApiError(500, 'Failed to upload avatar');
     }
 
     const { data: urlData } = supabaseAdmin.storage.from('avatars').getPublicUrl(path);
-    return repository.updateAvatar(userId, urlData.publicUrl);
+    try {
+        return await repository.updateAvatar(userId, urlData.publicUrl);
+    } catch (err) {
+        if (isMissingProfileRowError(err)) throw profileUpdateNotFoundError();
+        throw err;
+    }
 };
 
 const requestEmailChangeOTP = async (userId, newEmail, currentPassword) => {
@@ -204,21 +232,28 @@ const deleteAccount = async (userId, currentPassword) => {
     const profile = await repository.findById(userId);
     if (!profile) throw new ApiError(404, 'Profile not found');
 
-    // Sellers cannot delete their own account
-    if (profile.role === 'seller') {
-        throw new ApiError(403, 'Seller accounts cannot be deleted. Please contact support.');
-    }
-
     const { error: authError } = await supabaseAdmin.auth.signInWithPassword({
         email: profile.email,
         password: currentPassword,
     });
     if (authError) throw new ApiError(401, 'Current password is incorrect');
 
-    // Buyers cannot delete if they have any transactions
-    const hasTx = await repository.hasAnyTransactions(userId);
-    if (hasTx) {
-        throw new ApiError(400, 'Cannot delete account with existing transactions.');
+    if (profile.role === 'seller') {
+        const hasGems = await repository.hasSellerGems(userId);
+        if (hasGems) {
+            throw new ApiError(400, 'Cannot delete seller account while gem posts exist. Remove your gem posts first.');
+        }
+
+        const hasAuctions = await repository.hasSellerAuctions(userId);
+        if (hasAuctions) {
+            throw new ApiError(400, 'Cannot delete seller account while auctions exist. Remove your auctions first.');
+        }
+    } else {
+        // Buyers cannot delete if they have any transactions
+        const hasTx = await repository.hasAnyTransactions(userId);
+        if (hasTx) {
+            throw new ApiError(400, 'Cannot delete account with existing transactions.');
+        }
     }
 
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);

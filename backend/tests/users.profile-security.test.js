@@ -7,7 +7,12 @@ jest.mock('../src/config/supabase', () => ({
       admin: {
         getUserById: jest.fn(),
         updateUserById: jest.fn(),
+        deleteUser: jest.fn(),
       },
+      getUser: jest.fn(),
+    },
+    storage: {
+      from: jest.fn(),
     },
   },
 }));
@@ -16,6 +21,11 @@ jest.mock('../src/modules/users/users.repository', () => ({
   findById: jest.fn(),
   findByEmail: jest.fn(),
   update: jest.fn(),
+  updateAvatar: jest.fn(),
+  hasAnyTransactions: jest.fn(),
+  hasSellerGems: jest.fn(),
+  hasSellerAuctions: jest.fn(),
+  purgeUserAndDelete: jest.fn(),
 }));
 
 jest.mock('../src/utils/email', () => ({
@@ -246,5 +256,105 @@ describe('signup validation', () => {
     expect(parsed.city).toBe('Ratnapura');
     expect(parsed.address_line1).toBe('No. 12 Gem Street');
     expect(parsed.postal_code).toBe('70000');
+  });
+});
+
+describe('profile self deletion', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    repository.findById.mockResolvedValue({
+      id: 'seller-1',
+      email: 'seller@example.com',
+      role: 'seller',
+    });
+    repository.hasAnyTransactions.mockResolvedValue(false);
+    repository.hasSellerGems.mockResolvedValue(false);
+    repository.hasSellerAuctions.mockResolvedValue(false);
+    repository.purgeUserAndDelete.mockResolvedValue(undefined);
+    supabaseAdmin.auth.signInWithPassword.mockResolvedValue({ error: null });
+    supabaseAdmin.auth.admin.deleteUser.mockResolvedValue({ error: null });
+  });
+
+  it('allows a seller without gem posts or auctions to delete their own account', async () => {
+    const result = await service.deleteAccount('seller-1', 'CurrentPass1!');
+
+    expect(supabaseAdmin.auth.signInWithPassword).toHaveBeenCalledWith({
+      email: 'seller@example.com',
+      password: 'CurrentPass1!',
+    });
+    expect(repository.hasSellerGems).toHaveBeenCalledWith('seller-1');
+    expect(repository.hasSellerAuctions).toHaveBeenCalledWith('seller-1');
+    expect(supabaseAdmin.auth.admin.deleteUser).toHaveBeenCalledWith('seller-1');
+    expect(result.message).toBe('Account deleted successfully.');
+  });
+
+  it('blocks seller self deletion when the seller has any gem posts', async () => {
+    repository.hasSellerGems.mockResolvedValue(true);
+
+    await expect(
+      service.deleteAccount('seller-1', 'CurrentPass1!')
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: 'Cannot delete seller account while gem posts exist. Remove your gem posts first.',
+    });
+
+    expect(supabaseAdmin.auth.admin.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('blocks seller self deletion when the seller has any auctions', async () => {
+    repository.hasSellerAuctions.mockResolvedValue(true);
+
+    await expect(
+      service.deleteAccount('seller-1', 'CurrentPass1!')
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: 'Cannot delete seller account while auctions exist. Remove your auctions first.',
+    });
+
+    expect(supabaseAdmin.auth.admin.deleteUser).not.toHaveBeenCalled();
+  });
+});
+
+describe('profile update error handling', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('returns a clear error when the profile row cannot be updated', async () => {
+    repository.update.mockRejectedValue({
+      code: 'PGRST116',
+      message: 'Cannot coerce the result to a single JSON object',
+    });
+
+    await expect(
+      service.updateProfile('missing-user', { full_name: 'Updated User' })
+    ).rejects.toMatchObject({
+      statusCode: 404,
+      message: 'Profile could not be updated because no matching profile row was found.',
+    });
+  });
+
+  it('returns a clear error when avatar storage upload is blocked by RLS', async () => {
+    supabaseAdmin.storage.from.mockReturnValue({
+      upload: jest.fn().mockResolvedValue({
+        error: {
+          statusCode: '403',
+          message: 'new row violates row-level security policy',
+        },
+      }),
+    });
+
+    await expect(
+      service.uploadAvatar('user-1', {
+        mimetype: 'image/png',
+        size: 1024,
+        buffer: Buffer.from('avatar'),
+      })
+    ).rejects.toMatchObject({
+      statusCode: 500,
+      message: 'Avatar upload is blocked by Supabase Storage RLS. Check that the backend is using SUPABASE_SERVICE_ROLE_KEY and restart the server.',
+    });
+
+    expect(repository.updateAvatar).not.toHaveBeenCalled();
   });
 });

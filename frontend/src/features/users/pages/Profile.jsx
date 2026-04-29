@@ -228,13 +228,11 @@ const Profile = () => {
                         serverError={passwordError}
                     />
 
-                    {profile?.role !== 'seller' && (
-                        <DangerZone
-                            onDelete={handleDeleteAccount}
-                            isPending={deleteAccount.isPending}
-                            serverError={deleteError}
-                        />
-                    )}
+                    <DangerZone
+                        onDelete={handleDeleteAccount}
+                        isPending={deleteAccount.isPending}
+                        serverError={deleteError}
+                    />
 
                     <MyReviewsSection />
                 </div>

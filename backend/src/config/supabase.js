@@ -1,5 +1,29 @@
 const { createClient } = require('@supabase/supabase-js');
 
+const decodeJwtPayload = (token) => {
+    try {
+        const payload = token.split('.')[1];
+        if (!payload) return null;
+        return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    } catch {
+        return null;
+    }
+};
+
+const getSupabaseServiceRole = () => {
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!key) {
+        throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for backend admin operations.');
+    }
+
+    const payload = decodeJwtPayload(key);
+    if (payload?.role !== 'service_role') {
+        throw new Error('SUPABASE_SERVICE_ROLE_KEY must be a service_role key.');
+    }
+
+    return payload.role;
+};
+
 // Validate environment variables
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
     console.error('❌ Missing Supabase credentials. Please update your .env file.');
@@ -7,6 +31,11 @@ if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
     if (process.env.NODE_ENV !== 'development') {
         process.exit(1);
     }
+}
+
+const supabaseServiceRole = getSupabaseServiceRole();
+if (process.env.NODE_ENV !== 'test') {
+    console.log(`✅ Supabase admin role: ${supabaseServiceRole}`);
 }
 
 // Create Supabase client with anon key (for client-side auth)
@@ -25,7 +54,7 @@ const supabase = createClient(
 // Create admin client with service role key (for admin operations)
 const supabaseAdmin = createClient(
     process.env.SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
     {
         auth: {
             autoRefreshToken: false,
@@ -78,4 +107,4 @@ const ensureStorageBuckets = async () => {
     }
 };
 
-module.exports = { supabase, supabaseAdmin, testConnection, ensureStorageBuckets };
+module.exports = { supabase, supabaseAdmin, testConnection, ensureStorageBuckets, getSupabaseServiceRole };

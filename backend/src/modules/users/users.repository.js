@@ -53,6 +53,24 @@ const hasActiveAuctions = async (userId) => {
     return (data || []).length > 0;
 };
 
+const hasSellerGems = async (userId) => {
+    const { data } = await supabaseAdmin
+        .from('gems')
+        .select('id')
+        .eq('seller_id', userId)
+        .limit(1);
+    return (data || []).length > 0;
+};
+
+const hasSellerAuctions = async (userId) => {
+    const { data } = await supabaseAdmin
+        .from('auctions')
+        .select('id')
+        .eq('seller_id', userId)
+        .limit(1);
+    return (data || []).length > 0;
+};
+
 const hasPendingTransactions = async (userId) => {
     const { data } = await supabaseAdmin
         .from('transactions')
@@ -99,6 +117,8 @@ module.exports = {
     updateAvatar,
     findByEmail,
     hasActiveAuctions,
+    hasSellerGems,
+    hasSellerAuctions,
     hasPendingTransactions,
     hasAnyTransactions,
     purgeUserAndDelete,

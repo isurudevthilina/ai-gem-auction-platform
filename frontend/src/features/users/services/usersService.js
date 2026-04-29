@@ -1,70 +1,60 @@
+import api from '../../../api/client';
+
 /**
  * usersService.js — API calls for the users/profile module
  */
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
-
-const getAuthHeaders = () => {
-    const token = localStorage.getItem('gembid_token');
-    return token
-        ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
-        : { 'Content-Type': 'application/json' };
-};
-
-const apiFetch = async (path, options = {}) => {
-    const res = await fetch(`${API_BASE}${path}`, {
-        ...options,
-        headers: { ...getAuthHeaders(), ...options.headers },
-    });
-    const data = await res.json();
-    if (!res.ok) throw { ...data, status: res.status };
-    return data;
+const request = async (promise) => {
+    try {
+        const { data } = await promise;
+        return data;
+    } catch (err) {
+        const body = err.response?.data || {};
+        throw {
+            ...body,
+            status: err.response?.status,
+            message: body.message || err.message || 'Request failed.',
+        };
+    }
 };
 
 /** Get current user's profile */
-export const getMe = () => apiFetch('/api/users/me');
+export const getMe = () => request(api.get('/users/me'));
 
 /** Update profile fields */
 export const updateProfile = (fields) =>
-    apiFetch('/api/users/me', { method: 'PATCH', body: JSON.stringify(fields) });
+    request(api.patch('/users/me', fields));
 
 /** Upload avatar (multipart) */
 export const updateAvatar = async (file) => {
-    const token = localStorage.getItem('gembid_token');
     const form = new FormData();
     form.append('avatar', file);
-    const res = await fetch(`${API_BASE}/api/users/me/avatar`, {
-        method: 'PATCH',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: form,
-    });
-    const data = await res.json();
-    if (!res.ok) throw { ...data, status: res.status };
-    return data;
+    return request(api.patch('/users/me/avatar', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    }));
 };
 
 /** Change email */
 export const requestEmailChangeOTP = (payload) =>
-    apiFetch('/api/users/me/email/otp', { method: 'POST', body: JSON.stringify(payload) });
+    request(api.post('/users/me/email/otp', payload));
 
 export const changeEmail = (payload) =>
-    apiFetch('/api/users/me/email', { method: 'PATCH', body: JSON.stringify(payload) });
+    request(api.patch('/users/me/email', payload));
 
 /** Change password */
 export const requestPasswordChangeOTP = (payload) =>
-    apiFetch('/api/users/me/password/otp', { method: 'POST', body: JSON.stringify(payload) });
+    request(api.post('/users/me/password/otp', payload));
 
 export const changePassword = (payload) =>
-    apiFetch('/api/users/me/password', { method: 'PATCH', body: JSON.stringify(payload) });
+    request(api.patch('/users/me/password', payload));
 
 /** Delete account */
 export const deleteAccount = (payload) =>
-    apiFetch('/api/users/me', { method: 'DELETE', body: JSON.stringify(payload) });
+    request(api.delete('/users/me', { data: payload }));
 
 /** Search sellers (public) */
 export const searchSellers = (q, limit = 3) =>
-    apiFetch(`/api/users/search/sellers?q=${encodeURIComponent(q)}&limit=${limit}`);
+    request(api.get(`/users/search/sellers?q=${encodeURIComponent(q)}&limit=${limit}`));
 
 /** Get public seller profile */
 export const getPublicProfile = (id) =>
-    apiFetch(`/api/users/${id}/public`);
+    request(api.get(`/users/${id}/public`));
